@@ -3,10 +3,22 @@
     "tasks": [
         {
             "label": "build",
+            "type": "shell",
             "command": "dotnet",
-            "type": "process",
             "args": [
                 "build",
+                "${workspaceFolder}/tsne-csharp_Math.Net.csproj"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "build-release",
+            "type": "shell",
+            "command": "dotnet",
+            "args": [
+                "build",
+                "--configuration",
+                "Release",
                 "${workspaceFolder}/tsne-csharp_Math.Net.csproj"
             ],
             "problemMatcher": "$msCompile"

@@ -2,6 +2,10 @@ using System;
 using System.IO;
 using System.Globalization;
 using MathNet.Numerics.LinearAlgebra;
+using MathNet.Numerics.Distributions;
+using System.Diagnostics;
+using System.Threading;
+using MathNet.Numerics;
 
 
 // Paper: "Visualizing Data using t-SNE" (2008), 
@@ -16,43 +20,40 @@ namespace TSNE
     {
       CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
       CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
-
+      Control.UseNativeMKL();
       Console.WriteLine("\nBegin t-SNE with C# demo ");
 
       Console.WriteLine("\nLoading source data ");
-      // hard-coded demo data
-      //double[][] X = new double[12][];  // penguin data
-      //X[0] = new double[] { 39.5, 17.4, 186, 3800 };  // class 0
-      //X[1] = new double[] { 40.3, 18.0, 195, 3250 };  // 0
-      //X[2] = new double[] { 36.7, 19.3, 193, 3450 };  // 0
-      //X[3] = new double[] { 38.9, 17.8, 181, 3625 };  // 0
-      //X[4] = new double[] { 46.5, 17.9, 192, 3500 };  // 1
-      //X[5] = new double[] { 45.4, 18.7, 188, 3525 };  // 1
-      //X[6] = new double[] { 45.2, 17.8, 198, 3950 };  // 1
-      //X[7] = new double[] { 46.1, 18.2, 178, 3250 };  // 1
-      //X[8] = new double[] { 46.1, 13.2, 211, 4500 };  // 2
-      //X[9] = new double[] { 48.7, 14.1, 210, 4450 };  // 2
-      //X[10] = new double[] { 46.5, 13.5, 210, 4550 };  // 2
-      //X[11] = new double[] { 45.4, 14.6, 211, 4800 };  // 2
-
       // load data from file
-      string ifn = "penguin_12.txt";
-      // # species, bill len, wid, flip len , weight
-      // 0, 39.5, 17.4, 186, 3800
-      // 0, 40.3, 18.0, 195, 3250
-      // . . .
-      // 2, 45.4, 14.6, 211, 4800
+      //string ifn = "penguin_12.txt";
+      //var X = TSNE.MatLoad(ifn, new int[] { 1, 2, 3, 4 }, ',', "#");
 
-      var X = TSNE.MatLoad(ifn, new int[] { 1, 2, 3, 4 }, ',', "#");
-      Console.WriteLine("\nSource data: ");
-      TSNE.MatShow(X, 1, 10, true);
+      //alternatively use the large MNIST test set and load2 for loading all columns without specifying them
+      string ifn = "mnist_test.csv";
+      var X = TSNE.MatLoad2(ifn, ',', "#");
+
+      Console.WriteLine("Data loaded from " + ifn);
+      //show first 10 lines of X to console
+      Console.WriteLine("First 10 rows of data:");
+      for (int i = 0; i < 10; i++)
+      {
+        for (int j = 0; j < X.ColumnCount; j++)
+        {
+          Console.Write(X[i, j].ToString("F1").PadLeft(8));
+        }
+        Console.WriteLine("");
+      }
 
       Console.WriteLine("\nApplying t-SNE reduction ");
       int maxIter = 500;
       int perplexity = 3;
       Console.WriteLine("Setting maxIter = " + maxIter);
-      Console.WriteLine("Setting perplaxity = " + perplexity);
+      Console.WriteLine("Setting perplexity = " + perplexity);
+      Stopwatch sw = new Stopwatch();
+      sw.Start();
       var reduced = TSNE.Reduce(X, maxIter, perplexity);
+      sw.Stop();
+      Console.WriteLine("t-SNE reduction completed in " + sw.ElapsedMilliseconds / 1000.0 + " s");
 
       Console.WriteLine("\nReduced data: ");
       TSNE.MatShow(reduced, 2, 10, true);
@@ -112,6 +113,7 @@ namespace TSNE
 
       for (int iter = 0; iter < maxIter; ++iter)
       {
+        Console.WriteLine("Iteration " + iter);
         var rowSums = Y.PointwisePower(2).RowSums();
         var Num = MatProduct(Y, MatTranspose(Y)).Multiply(-2.0);
         for (int i = 0; i < n; ++i)
@@ -162,7 +164,7 @@ namespace TSNE
         var meansTile = Matrix<double>.Build.Dense(n, 2, (i, j) => meansY[j]);
         Y = Y - meansTile;
 
-        if ((iter + 1) % 100 == 0)
+        if ((iter + 1) % 20 == 0)
         {
           double C = MatSum(MatMultLogDivide(P, P, Q));
           Console.WriteLine("iter = " + (iter + 1).ToString().PadLeft(6) + "  |  error = " + C.ToString("F4"));
@@ -242,22 +244,39 @@ namespace TSNE
       return P;
     }
     // Refactored to use Math.NET Numerics
+    //then refactored again to use
+    // Dij = ||xi - xj||^2 = ||xi||^2 + ||xj||^2 - 2*xi.xj
+
+    // private static Matrix<double> MatSquaredDistances(Matrix<double> X)
+    // {
+    //   int n = X.RowCount;
+    //   var result = Matrix<double>.Build.Dense(n, n);
+    //   for (int i = 0; i < n; ++i)
+    //   {
+    //     var rowI = X.Row(i);
+    //     for (int j = i; j < n; ++j)
+    //     {
+    //       var rowJ = X.Row(j);
+    //       double dist = (rowI - rowJ).PointwisePower(2).Sum();
+    //       result[i, j] = dist;
+    //       result[j, i] = dist;
+    //     }
+    //   }
+    //   return result;
+    // }
+
     private static Matrix<double> MatSquaredDistances(Matrix<double> X)
     {
-      int n = X.RowCount;
-      var result = Matrix<double>.Build.Dense(n, n);
-      for (int i = 0; i < n; ++i)
-      {
-        var rowI = X.Row(i);
-        for (int j = i; j < n; ++j)
-        {
-          var rowJ = X.Row(j);
-          double dist = (rowI - rowJ).PointwisePower(2).Sum();
-          result[i, j] = dist;
-          result[j, i] = dist;
-        }
-      }
-      return result;
+      // X: n x d
+      var s = X.PointwisePower(2).RowSums(); // n x 1
+      var G = X * X.Transpose(); // n x n
+      var ones = Vector<double>.Build.Dense(X.RowCount, 1.0);
+      var S1 = s.ToColumnMatrix() * ones.ToRowMatrix(); // n x n, each row is s
+      var S2 = ones.ToColumnMatrix() * s.ToRowMatrix(); // n x n, each col is s
+      var D = S1 + S2 - 2.0 * G;
+      // Numerical errors can cause tiny negatives; clamp to zero
+      D.MapInplace(x => x < 0.0 ? 0.0 : x);
+      return D;
     }
 
     // ------------------------------------------------------
@@ -289,6 +308,27 @@ namespace TSNE
           var row = new double[usecols.Length];
           for (int j = 0; j < usecols.Length; ++j)
             row[j] = double.Parse(tokens[usecols[j]], System.Globalization.CultureInfo.InvariantCulture);
+          rows.Add(row);
+        }
+      }
+      return Matrix<double>.Build.DenseOfRows(rows);
+    }
+
+    // ------------------------------------------------------
+    //second load function that simply loads all columns without specifying which ones
+    public static Matrix<double> MatLoad2(string fn, char sep, string comment)
+    {
+      var rows = new System.Collections.Generic.List<double[]>();
+      using (var sr = new StreamReader(fn))
+      {
+        string line;
+        while ((line = sr.ReadLine()) != null)
+        {
+          if (line.StartsWith(comment)) continue;
+          var tokens = line.Split(sep);
+          var row = new double[tokens.Length];
+          for (int j = 0; j < tokens.Length; ++j)
+            row[j] = double.Parse(tokens[j], System.Globalization.CultureInfo.InvariantCulture);
           rows.Add(row);
         }
       }

@@ -16,3 +16,6 @@ C:\Users\rab\source\Downloaded repos\tsne-csharp-fork\tsne-csharp_Math.Net\obj\D
 C:\Users\rab\source\Downloaded repos\tsne-csharp-fork\tsne-csharp_Math.Net\obj\Debug\net9.0\tsne-csharp_Math.Net.pdb
 C:\Users\rab\source\Downloaded repos\tsne-csharp-fork\tsne-csharp_Math.Net\obj\Debug\net9.0\tsne-csharp_Math.Net.genruntimeconfig.cache
 C:\Users\rab\source\Downloaded repos\tsne-csharp-fork\tsne-csharp_Math.Net\obj\Debug\net9.0\ref\tsne-csharp_Math.Net.dll
+C:\Users\rab\source\Downloaded repos\tsne-csharp-fork\tsne-csharp_Math.Net\bin\Debug\net9.0\MathNet.Numerics.Providers.MKL.dll
+C:\Users\rab\source\Downloaded repos\tsne-csharp-fork\tsne-csharp_Math.Net\bin\Debug\net9.0\runtimes\win-x64\native\libMathNetNumericsMKL.dll
+C:\Users\rab\source\Downloaded repos\tsne-csharp-fork\tsne-csharp_Math.Net\bin\Debug\net9.0\runtimes\win-x64\native\libiomp5md.dll
