@@ -602,15 +602,10 @@ namespace TSNE
 
     // ------------------------------------------------------
 
-    private static double[][] MatDiff(double[][] A,
-      double[][] B)
+    // Refactored to use Math.NET Numerics
+    private static Matrix<double> MatDiff(Matrix<double> A, Matrix<double> B)
     {
-      int nRows = A.Length; int nCols = A[0].Length;
-      double[][] result = MatCreate(nRows, nCols);
-      for (int i = 0; i < nRows; ++i)
-        for (int j = 0; j < nCols; ++j)
-          result[i][j] = A[i][j] - B[i][j];
-      return result;
+      return A - B;
     }
 
     // ------------------------------------------------------
