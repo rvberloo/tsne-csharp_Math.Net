@@ -72,137 +72,106 @@ namespace TSNE
     public static double[][] Reduce(double[][] X, int maxIter, int perplexity)
     {
       int n = X.Length;
-      double momentum = (iter < 20) ? initialMomentum : finalMomentum;
+      double initialMomentum = 0.5;
+      double finalMomentum = 0.8;
+      double eta = 500.0;
+      double minGain = 0.01;
 
-      // compute Gains using Math.NET
+      // initialize result Y using Math.NET
+      Gaussian g = new Gaussian(mean: 0.0, sd: 1.0, seed: 1);
+      var Y = Matrix<double>.Build.Dense(n, 2, (i, j) => g.NextGaussian());
+      var dY = Matrix<double>.Build.Dense(n, 2);
+      var iY = Matrix<double>.Build.Dense(n, 2);
+      var Gains = Matrix<double>.Build.Dense(n, 2, 1.0);
+
+      // Convert X to Math.NET matrix for ComputeP
+      var P = ToMatrix(ComputeP(X, perplexity));
+      P = MatAdd(P, MatTranspose(P));
+      double sumP = MatSum(P);
       for (int i = 0; i < n; ++i)
       {
-        for (int j = 0; j < 2; ++j)
+        for (int j = 0; j < n; ++j)
         {
-          if ((dY[i, j] > 0.0 && iY[i, j] <= 0.0) || (dY[i, j] <= 0.0 && iY[i, j] > 0.0))
-            Gains[i, j] = Gains[i, j] + 0.2;
-          else if ((dY[i, j] > 0.0 && iY[i, j] > 0.0) || (dY[i, j] <= 0.0 && iY[i, j] <= 0.0))
-            Gains[i, j] = Gains[i, j] * 0.8;
+          P[i, j] = (P[i, j] * 4.0) / sumP;
+          if (P[i, j] < 1.0e-12)
+            P[i, j] = 1.0e-12;
         }
       }
-      // Clamp Gains to minGain
-      Gains.MapInplace(x => x < minGain ? minGain : x);
 
-      // use dY to compute iY to update result Y
-      iY = iY.Multiply(momentum).Subtract(Gains.PointwiseMultiply(dY).Multiply(eta));
-      Y = Y.Add(iY);
+      for (int iter = 0; iter < maxIter; ++iter)
+      {
+        // rowSums = sum of squares of each row in Y
+        var rowSums = Y.PointwisePower(2).RowSums();
 
-      // Center Y by subtracting column means
-      var meansY = Y.ColumnSums() / n;
-      var meansTile = Matrix<double>.Build.Dense(n, 2, (i, j) => meansY[j]);
-      Y = Y - meansTile;
-      MatZeroOutDiag(Num);
+        // Num = -2 * (Y * Y^T) and normalize
+        var Num = MatProduct(Y, MatTranspose(Y)).Multiply(-2.0);
+        for (int i = 0; i < n; ++i)
+          Num.SetRow(i, Num.Row(i) + rowSums[i]);
+        Num = Num.Transpose();
+        for (int i = 0; i < n; ++i)
+          Num.SetRow(i, Num.Row(i) + rowSums[i]);
+        Num = Num.Add(1.0).PointwisePower(-1.0);
+        for (int i = 0; i < n; ++i)
+          Num[i, i] = 0.0;
 
-      double sumNum = MatSum(Num);
-      double[][] Q = MatCopy(Num);
-      for (int i = 0; i < Num.Length; ++i)
-        for (int j = 0; j < Num[0].Length; ++j)
+        double sumNum = Num.Sum();
+        var Q = Num.Clone();
+        Q = Q.Divide(sumNum);
+        Q.MapInplace(x => x < 1.0e-12 ? 1.0e-12 : x);
+
+        var PminusQ = P - Q;
+
+        // Compute dY using Math.NET Numerics
+        for (int i = 0; i < n; ++i)
         {
-          Q[i][j] = Q[i][j] / sumNum;
-          if (Q[i][j] < 1.0e-12)
-            Q[i][j] = 1.0e-12;
+          var tmpA = Y.Row(i);
+          var tmpB = Matrix<double>.Build.Dense(n, 2, (r, c) => tmpA[c] - Y[r, c]);
+          var tmpK = PminusQ.Column(i).PointwiseMultiply(Num.Column(i));
+          var tmpF = Matrix<double>.Build.Dense(n, 2, (r, c) => tmpK[r]);
+          var tmpG = tmpF.PointwiseMultiply(tmpB);
+          var tmpZ = tmpG.ColumnSums();
+          dY.SetRow(i, tmpZ);
         }
 
-      double[][] PminusQ = MatDiff(P, Q);
+        double momentum = (iter < 20) ? initialMomentum : finalMomentum;
 
-      // Compute dY using Math.NET Numerics
-      for (int i = 0; i < n; ++i)
-      {
-        // tmpA: i-th row of Y
-        var tmpA = Y.Row(i);
-        // tmpB: each row of Y subtracted from tmpA (broadcast)
-        var tmpB = Matrix<double>.Build.Dense(n, 2, (r, c) => tmpA[c] - Y[r, c]);
-        // tmpK: elementwise product of column i of PminusQ and Num
-        var tmpK = PminusQ.Column(i).PointwiseMultiply(Num.Column(i));
-        // tmpF: tile tmpK as a column vector, then transpose to match tmpB
-        var tmpF = Matrix<double>.Build.Dense(n, 2, (r, c) => tmpK[r]);
-        // tmpG: elementwise multiply tmpF and tmpB
-        var tmpG = tmpF.PointwiseMultiply(tmpB);
-        // tmpZ: column sums of tmpG
-        var tmpZ = tmpG.ColumnSums();
-        dY.SetRow(i, tmpZ);
-      }
-
-      double momentum;
-      if (iter < 20)
-        momentum = initialMomentum;
-      else
-        momentum = finalMomentum;
-
-      // compute Gains
-      for (int i = 0; i < Gains.Length; ++i)
-      {
-        for (int j = 0; j < Gains[0].Length; ++j)
+        // compute Gains using Math.NET
+        for (int i = 0; i < n; ++i)
         {
-          if ((dY[i][j] > 0.0 &&
-            iY[i][j] <= 0.0) ||
-            (dY[i][j] <= 0.0 &&
-            iY[i][j] > 0.0))
-            Gains[i][j] = Gains[i][j] + 0.2;
-          else if ((dY[i][j] > 0.0 &&
-            iY[i][j] > 0.0) ||
-            // Num = -2 * (Y * Y^T) and normalize
-            var Num = MatProduct(Y, MatTranspose(Y)).Multiply(-2.0);
-          // Add rowSums to each row
+          for (int j = 0; j < 2; ++j)
+          {
+            if ((dY[i, j] > 0.0 && iY[i, j] <= 0.0) || (dY[i, j] <= 0.0 && iY[i, j] > 0.0))
+              Gains[i, j] = Gains[i, j] + 0.2;
+            else if ((dY[i, j] > 0.0 && iY[i, j] > 0.0) || (dY[i, j] <= 0.0 && iY[i, j] <= 0.0))
+              Gains[i, j] = Gains[i, j] * 0.8;
+          }
+        }
+        Gains.MapInplace(x => x < minGain ? minGain : x);
+
+        // use dY to compute iY to update result Y
+        iY = iY.Multiply(momentum).Subtract(Gains.PointwiseMultiply(dY).Multiply(eta));
+        Y = Y.Add(iY);
+
+        // Center Y by subtracting column means
+        var meansY = Y.ColumnSums() / n;
+        var meansTile = Matrix<double>.Build.Dense(n, 2, (i, j) => meansY[j]);
+        Y = Y - meansTile;
+
+        if ((iter + 1) % 100 == 0)
+        {
+          double C = MatSum(MatMultLogDivide(P, P, Q));
+          Console.WriteLine("iter = " + (iter + 1).ToString().PadLeft(6) + "  |  error = " + C.ToString("F4"));
+        }
+
+        if (iter == 100)
+        {
           for (int i = 0; i < n; ++i)
-            Num.SetRow(i, Num.Row(i) + rowSums[i]);
-          // Transpose and add rowSums to each row again
-          Num = Num.Transpose();
-          for (int i = 0; i < n; ++i)
-            Num.SetRow(i, Num.Row(i) + rowSums[i]);
-          // Add 1 and invert elements
-          Num = Num.Add(1.0).PointwisePower(-1.0);
-          // Zero out diagonal
-          for (int i = 0; i < n; ++i)
-            Num[i, i] = 0.0;
-          Gains[i][j] = Gains[i][j] * 0.8;
+            for (int j = 0; j < n; ++j)
+              P[i, j] /= 4.0;
         }
       }
-
-      for (int i = 0; i < Gains.Length; ++i)
-        for (int j = 0; j < Gains[0].Length; ++j)
-          if (Gains[i][j] < minGain)
-            Gains[i][j] = minGain;
-
-      // use dY to compute iY to update result Y
-      for (int i = 0; i < iY.Length; ++i)
-      {
-        for (int j = 0; j < iY[0].Length; ++j)
-        {
-          iY[i][j] = (momentum * iY[i][j]) -
-            (eta * Gains[i][j] * dY[i][j]);
-          Y[i][j] += iY[i][j];
-        }
-      }
-
-      double[] meansY = MatColumnMeans(Y);
-      double[][] meansTile = VecTile(meansY, n);
-      Y = MatDiff(Y, meansTile);  // updated result
-
-      if ((iter + 1) % 100 == 0)
-      {
-        // cost aka error
-        double C = MatSum(MatMultLogDivide(P, P, Q));
-        Console.WriteLine("iter = " + (iter + 1).
-          ToString().PadLeft(6) +
-          "  |  error = " + C.ToString("F4"));
-      }
-
-      if (iter == 100) // undo the initial expansion of P
-      {
-        for (int i = 0; i < P.Length; ++i)
-          for (int j = 0; j < P[0].Length; ++j)
-            P[i][j] /= 4.0;
-      }
-    } // iter
-
-      return Y;
-    } // Reduce()
+      return Y.ToRowArrays();
+    }
 
     // ------------------------------------------------------
 
@@ -319,28 +288,24 @@ namespace TSNE
     //
     // ------------------------------------------------------
 
-    private static double[][]
-      MatSquaredDistances(double[][] X)
+    // Refactored to use Math.NET Numerics
+    private static double[][] MatSquaredDistances(double[][] X)
     {
-      // squared Euclidean distances, all rows in X
-      int n = X.Length;
-      int dim = X[0].Length;
-      double[][] result = MatCreate(n, n);
+      var mat = Matrix<double>.Build.DenseOfRows(X);
+      int n = mat.RowCount;
+      var result = Matrix<double>.Build.Dense(n, n);
       for (int i = 0; i < n; ++i)
       {
+        var rowI = mat.Row(i);
         for (int j = i; j < n; ++j)
         {
-          double dist = 0.0;
-          for (int k = 0; k < dim; ++k)
-          {
-            dist += (X[i][k] - X[j][k]) *
-              (X[i][k] - X[j][k]);
-          }
-          result[i][j] = dist;
-          result[j][i] = dist;
+          var rowJ = mat.Row(j);
+          double dist = (rowI - rowJ).PointwisePower(2).Sum();
+          result[i, j] = dist;
+          result[j, i] = dist;
         }
       }
-      return result;
+      return result.ToRowArrays();
     }
 
     // ------------------------------------------------------
@@ -774,27 +739,27 @@ namespace TSNE
 
     // nested Gaussian to init TSNE.Reduce() result
     class Gaussian
-  {
-    private Random rnd;
-    private double mean;
-    private double sd;
-
-    public Gaussian(double mean, double sd, int seed)
     {
-      this.rnd = new Random(seed);
-      this.mean = mean;
-      this.sd = sd;
-    }
+      private Random rnd;
+      private double mean;
+      private double sd;
 
-    public double NextGaussian()
-    {
-      double u1 = this.rnd.NextDouble();
-      double u2 = this.rnd.NextDouble();
-      double left = Math.Cos(2.0 * Math.PI * u1);
-      double right = Math.Sqrt(-2.0 * Math.Log(u2));
-      double z = left * right;
-      return this.mean + (z * this.sd);
-    }
+      public Gaussian(double mean, double sd, int seed)
+      {
+        this.rnd = new Random(seed);
+        this.mean = mean;
+        this.sd = sd;
+      }
+
+      public double NextGaussian()
+      {
+        double u1 = this.rnd.NextDouble();
+        double u2 = this.rnd.NextDouble();
+        double left = Math.Cos(2.0 * Math.PI * u1);
+        double right = Math.Sqrt(-2.0 * Math.Log(u2));
+        double z = left * right;
+        return this.mean + (z * this.sd);
+      }
     } // Gaussian
 
     // ------------------------------------------------------
