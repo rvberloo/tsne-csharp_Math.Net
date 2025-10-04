@@ -69,63 +69,45 @@ namespace TSNE
   {
     // wrapper class for static Reduce() and its helpers
 
-    public static double[][] Reduce(double[][] X,
-      int maxIter, int perplexity)
+    public static double[][] Reduce(double[][] X, int maxIter, int perplexity)
     {
-      // perplexity is number of nearest neighbors
-      // calls ComputeP(), which calls ComputePH()
-      // number of result dimension fixed to 2   
       int n = X.Length;
       double initialMomentum = 0.5;
       double finalMomentum = 0.8;
       double eta = 500.0;
       double minGain = 0.01;
 
-      // initialize result Y
-      Gaussian g = new Gaussian(mean: 0.0, sd: 1.0,
-        seed: 1);
-      double[][] Y = MatCreate(n, 2);
-      for (int i = 0; i < n; ++i)
-        for (int j = 0; j < 2; ++j)
-          Y[i][j] = g.NextGaussian();
+      // initialize result Y using Math.NET
+      Gaussian g = new Gaussian(mean: 0.0, sd: 1.0, seed: 1);
+      var Y = Matrix<double>.Build.Dense(n, 2, (i, j) => g.NextGaussian());
+      var dY = Matrix<double>.Build.Dense(n, 2);
+      var iY = Matrix<double>.Build.Dense(n, 2);
+      var Gains = Matrix<double>.Build.Dense(n, 2, 1.0);
 
-      double[][] dY = MatCreate(n, 2);
-      double[][] iY = MatCreate(n, 2);
-      double[][] Gains = MatOnes(n, 2);
-
-      double[][] P = ComputeP(X, perplexity);
+      // Convert X to Math.NET matrix for ComputeP
+      var Xmat = Matrix<double>.Build.DenseOfRows(X);
+      var P = ToMatrix(ComputeP(X, perplexity));
       P = MatAdd(P, MatTranspose(P));
       double sumP = MatSum(P);
       for (int i = 0; i < n; ++i)
       {
         for (int j = 0; j < n; ++j)
         {
-          P[i][j] = (P[i][j] * 4.0) / sumP;
-          if (P[i][j] < 1.0e-12)
-            P[i][j] = 1.0e-12;
+          P[i, j] = (P[i, j] * 4.0) / sumP;
+          if (P[i, j] < 1.0e-12)
+            P[i, j] = 1.0e-12;
         }
       }
 
       for (int iter = 0; iter < maxIter; ++iter)
       {
-        double[] rowSums = new double[n]; // sum squared
-        for (int i = 0; i < n; ++i)
-        {
-          double rowSum = 0.0;
-          for (int j = 0; j < 2; ++j)
-          {
-            rowSum += Y[i][j] * Y[i][j];
-          }
-          rowSums[i] = rowSum;
-        }
+        // rowSums = sum of squares of each row in Y
+        var rowSums = Y.PointwisePower(2).RowSums();
 
-        double[][] Num = MatProduct(Y, MatTranspose(Y));
-        for (int i = 0; i < Num.Length; ++i)
-          for (int j = 0; j < Num[0].Length; ++j)
-            Num[i][j] *= -2.0;
+        // Num = -2 * (Y * Y^T)
+        var Num = MatProduct(Y, MatTranspose(Y)).Multiply(-2.0);
 
-        // num = 1 / (1 + np.add(np.add(num,sum_Y).T,sum_Y))
-        // num[range(n), range(n)] = 0.
+        // The rest of the loop will be migrated in the next step
 
         double[][] tmp0 = MatVecAdd(Num, rowSums);
         double[][] tmp1 = MatTranspose(tmp0);
@@ -366,13 +348,10 @@ namespace TSNE
 
     // ------------------------------------------------------
 
-    private static double[][] MatCreate(int rows,
-      int cols)
+    // Refactored to use Math.NET Numerics
+    private static Matrix<double> MatCreate(int rows, int cols)
     {
-      double[][] result = new double[rows][];
-      for (int i = 0; i < rows; ++i)
-        result[i] = new double[cols];
-      return result;
+      return Matrix<double>.Build.Dense(rows, cols);
     }
 
     // ------------------------------------------------------
