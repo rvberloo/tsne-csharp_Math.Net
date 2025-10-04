@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("tsne-csharp_Math.Net")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b86311cc44a8a06dfa3bc9ebcf93f8992472a85a")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+88a8494bcbe552b87fed68d4151df6c4e182561a")]
 [assembly: System.Reflection.AssemblyProductAttribute("tsne-csharp_Math.Net")]
 [assembly: System.Reflection.AssemblyTitleAttribute("tsne-csharp_Math.Net")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

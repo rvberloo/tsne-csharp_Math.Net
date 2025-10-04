@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Globalization;
 using MathNet.Numerics.LinearAlgebra;
 
 
@@ -13,6 +14,9 @@ namespace TSNE
   {
     public static void Main(string[] args)
     {
+      CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+      CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
+
       Console.WriteLine("\nBegin t-SNE with C# demo ");
 
       Console.WriteLine("\nLoading source data ");
@@ -90,7 +94,12 @@ namespace TSNE
       double minGain = 0.01;
 
       Gaussian g = new Gaussian(mean: 0.0, sd: 1.0, seed: 1);
-      var Y = Matrix<double>.Build.Dense(n, 2, (i, j) => g.NextGaussian());
+      var Y = Matrix<double>.Build.Dense(n, 2);
+      for (int i = 0; i < n; ++i)
+        for (int j = 0; j < 2; ++j)
+          Y[i, j] = g.NextGaussian();
+
+      //var tmpy = ToDoubleArray(Y); for debugging
       var dY = Matrix<double>.Build.Dense(n, 2);
       var iY = Matrix<double>.Build.Dense(n, 2);
       var Gains = Matrix<double>.Build.Dense(n, 2, 1.0);
@@ -182,6 +191,7 @@ namespace TSNE
       double[] beta = new double[n];
       for (int i = 0; i < n; ++i)
       {
+        beta[i] = 1.0; // Initialize beta to 1.0 for each row
         double betaMin = -1.0e15;
         double betaMax = 1.0e15;
         // ith row of D, without 0.0 at [i,i]
@@ -195,7 +205,7 @@ namespace TSNE
         }
 
         double h;
-        double[] currP = ComputePH(Di, beta[i] == 0 ? 1.0 : beta[i], out h);
+        double[] currP = ComputePH(Di, beta[i], out h);
         double hDiff = h - Math.Log(perplexity);
         int ct = 0;
         while (Math.Abs(hDiff) > tol && ct < 50)
@@ -228,6 +238,7 @@ namespace TSNE
           else P[i, j] = currP[k++];
         }
       }
+      //var temp = ToDoubleArray(P); // for debugging
       return P;
     }
     // Refactored to use Math.NET Numerics
@@ -277,7 +288,7 @@ namespace TSNE
           var tokens = line.Split(sep);
           var row = new double[usecols.Length];
           for (int j = 0; j < usecols.Length; ++j)
-            row[j] = double.Parse(tokens[usecols[j]]);
+            row[j] = double.Parse(tokens[usecols[j]], System.Globalization.CultureInfo.InvariantCulture);
           rows.Add(row);
         }
       }
@@ -644,6 +655,20 @@ namespace TSNE
     private static Matrix<double> ToMatrix(double[][] array)
     {
       return Matrix<double>.Build.DenseOfRows(array);
+    }
+
+    private static double[][] ToDoubleArray(Matrix<double> mat)
+    {
+      int nRows = mat.RowCount;
+      int nCols = mat.ColumnCount;
+      double[][] array = new double[nRows][];
+      for (int i = 0; i < nRows; ++i)
+      {
+        array[i] = new double[nCols];
+        for (int j = 0; j < nCols; ++j)
+          array[i][j] = mat[i, j];
+      }
+      return array;
     }
 
   } // end class TSNE
