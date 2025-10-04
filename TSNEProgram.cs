@@ -377,14 +377,10 @@ namespace TSNE
 
     // ------------------------------------------------------
 
-    private static double[][] MatOnes(int rows,
-      int cols)
+    // Refactored to use Math.NET Numerics
+    private static Matrix<double> MatOnes(int rows, int cols)
     {
-      double[][] result = MatCreate(rows, cols);
-      for (int i = 0; i < rows; ++i)
-        for (int j = 0; j < cols; ++j)
-          result[i][j] = 1.0;
-      return result;
+      return Matrix<double>.Build.Dense(rows, cols, 1.0);
     }
 
     // ------------------------------------------------------
@@ -707,14 +703,10 @@ namespace TSNE
 
     // ------------------------------------------------------
 
-    private static double[] MatRowSums(double[][] M)
+    // Refactored to use Math.NET Numerics
+    private static Vector<double> MatRowSums(Matrix<double> M)
     {
-      int nRows = M.Length; int nCols = M[0].Length;
-      double[] result = new double[nRows];
-      for (int i = 0; i < nRows; ++i)
-        for (int j = 0; i < nCols; ++j)
-          result[i] += M[i][j];
-      return result;
+      return M.RowSums();
     }
 
     // ------------------------------------------------------
