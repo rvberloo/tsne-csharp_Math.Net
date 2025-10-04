@@ -49,3 +49,7 @@ Thumbs.db
 .vscode/*
 !.vscode/launch.json
 !.vscode/tasks.json
+/bin/Debug/net9.0/tsne-csharp_Math.Net.exe
+/obj/Debug/net9.0/apphost.exe
+/obj/Debug/net9.0/tsne-csharp_Math.Net.sourcelink.json
+/obj/Debug/net9.0/tsne-csharp_Math.Net.AssemblyInfo.cs
