@@ -550,19 +550,11 @@ namespace TSNE
 
     // ------------------------------------------------------
 
-    private static double[][] VecTile(double[] vec,
-      int n)
+    // Refactored to use Math.NET Numerics
+    private static Matrix<double> VecTile(Vector<double> vec, int n)
     {
-      // n row-copies of vec
-      int nCols = vec.Length;
-      double[][] result = MatCreate(n, nCols);
-      for (int i = 0; i < n; ++i)
-      {
-        for (int j = 0; j < nCols; ++j)
-        {
-          result[i][j] = vec[j];
-        }
-      }
+      int nCols = vec.Count;
+      var result = Matrix<double>.Build.Dense(n, nCols, (i, j) => vec[j]);
       return result;
     }
 
@@ -576,21 +568,26 @@ namespace TSNE
 
     // ------------------------------------------------------
 
-    private static double[][] MatMultLogDivide(double[][] P,
-      double[][] A, double[][] B)
+    // Refactored to use Math.NET Numerics
+    private static Matrix<double> MatMultLogDivide(Matrix<double> P, Matrix<double> A, Matrix<double> B)
     {
-      // element-wise P * log(A / B)
-      int nRows = A.Length; int nCols = A[0].Length;
-      double[][] result = MatCreate(nRows, nCols);
+      // element-wise P * log(A / B), with safe log for B==0
+      int nRows = A.RowCount;
+      int nCols = A.ColumnCount;
+      var result = Matrix<double>.Build.Dense(nRows, nCols);
       for (int i = 0; i < nRows; ++i)
+      {
         for (int j = 0; j < nCols; ++j)
         {
-          if (B[i][j] == 0.0)
-            result[i][j] = P[i][j] * Math.Log(1.0e10);
+          double b = B[i, j];
+          double a = A[i, j];
+          double p = P[i, j];
+          if (b == 0.0)
+            result[i, j] = p * Math.Log(1.0e10);
           else
-            result[i][j] = P[i][j] *
-              Math.Log(A[i][j] / B[i][j]);
+            result[i, j] = p * Math.Log(a / b);
         }
+      }
       return result;
     }
 
@@ -620,52 +617,42 @@ namespace TSNE
 
     // ------------------------------------------------------
 
-    private static void MatReplaceRow(double[][] M, int i,
-      double[] vec)
+    // Refactored to use Math.NET Numerics
+    private static void MatReplaceRow(Matrix<double> M, int i, Vector<double> vec)
     {
-      int nCols = M[0].Length;
-      for (int j = 0; j < nCols; ++j)
-        M[i][j] = vec[j];
-      return;
+      M.SetRow(i, vec);
     }
 
     // ------------------------------------------------------
 
-    private static double[][] MatVecAdd(double[][] M,
-      double[] vec)
+    // Refactored to use Math.NET Numerics
+    private static Matrix<double> MatVecAdd(Matrix<double> M, Vector<double> vec)
     {
       // add row vector vec to each row of M
-      int nr = M.Length; int nc = M[0].Length;
-      double[][] result = MatCreate(nr, nc);
+      int nr = M.RowCount;
+      int nc = M.ColumnCount;
+      var result = Matrix<double>.Build.Dense(nr, nc);
       for (int i = 0; i < nr; ++i)
-        for (int j = 0; j < nc; ++j)
-          result[i][j] = M[i][j] + vec[j];
+      {
+        result.SetRow(i, M.Row(i) + vec);
+      }
       return result;
     }
 
     // ------------------------------------------------------
 
-    private static double[][] MatAddScalar(double[][] M,
-      double val)
+    // Refactored to use Math.NET Numerics
+    private static Matrix<double> MatAddScalar(Matrix<double> M, double val)
     {
-      int nr = M.Length; int nc = M[0].Length;
-      double[][] result = MatCreate(nr, nc);
-      for (int i = 0; i < nr; ++i)
-        for (int j = 0; j < nc; ++j)
-          result[i][j] = M[i][j] + val;
-      return result;
+      return M.Add(val);
     }
 
     // ------------------------------------------------------
 
-    private static double[][] MatInvertElements(double[][] M)
+    // Refactored to use Math.NET Numerics
+    private static Matrix<double> MatInvertElements(Matrix<double> M)
     {
-      int nr = M.Length; int nc = M[0].Length;
-      double[][] result = MatCreate(nr, nc);
-      for (int i = 0; i < nr; ++i)
-        for (int j = 0; j < nc; ++j)
-          result[i][j] = 1.0 / M[i][j]; // M[i][j] not 0
-      return result;
+      return M.Map(x => 1.0 / x);
     }
 
     // ------------------------------------------------------
