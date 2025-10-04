@@ -665,13 +665,12 @@ namespace TSNE
 
     // ------------------------------------------------------
 
-    static void MatZeroOutDiag(double[][] M)
+    // Refactored to use Math.NET Numerics
+    private static void MatZeroOutDiag(Matrix<double> M)
     {
-      int nr = M.Length; //int nc = M[0].Length;
-      double result = 0.0;
-      for (int i = 0; i < nr; ++i)
-        M[i][i] = 0.0;
-      return;
+      int n = Math.Min(M.RowCount, M.ColumnCount);
+      for (int i = 0; i < n; ++i)
+        M[i, i] = 0.0;
     }
 
     // ------------------------------------------------------
