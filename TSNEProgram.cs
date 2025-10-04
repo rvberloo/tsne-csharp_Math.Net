@@ -586,37 +586,18 @@ namespace TSNE
 
     // ------------------------------------------------------
 
-    private static double[][] MatTranspose(double[][] m)
+    // Refactored to use Math.NET Numerics
+    private static Matrix<double> MatTranspose(Matrix<double> m)
     {
-      int nr = m.Length;
-      int nc = m[0].Length;
-      double[][] result = MatCreate(nc, nr);  // note
-      for (int i = 0; i < nr; ++i)
-        for (int j = 0; j < nc; ++j)
-          result[j][i] = m[i][j];
-      return result;
+      return m.Transpose();
     }
 
     // ------------------------------------------------------
 
-    private static double[][] MatProduct(double[][] matA,
-      double[][] matB)
+    // Refactored to use Math.NET Numerics
+    private static Matrix<double> MatProduct(Matrix<double> matA, Matrix<double> matB)
     {
-      int aRows = matA.Length;
-      int aCols = matA[0].Length;
-      int bRows = matB.Length;
-      int bCols = matB[0].Length;
-      if (aCols != bRows)
-        throw new Exception("Non-conformable matrices");
-
-      double[][] result = MatCreate(aRows, bCols);
-
-      for (int i = 0; i < aRows; ++i) // each row of A
-        for (int j = 0; j < bCols; ++j) // each col of B
-          for (int k = 0; k < aCols; ++k)
-            result[i][j] += matA[i][k] * matB[k][j];
-
-      return result;
+      return matA * matB;
     }
 
     // ------------------------------------------------------
