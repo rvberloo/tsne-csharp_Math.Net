@@ -289,23 +289,22 @@ namespace TSNE
     // ------------------------------------------------------
 
     // Refactored to use Math.NET Numerics
-    private static double[][] MatSquaredDistances(double[][] X)
+    private static Matrix<double> MatSquaredDistances(Matrix<double> X)
     {
-      var mat = Matrix<double>.Build.DenseOfRows(X);
-      int n = mat.RowCount;
+      int n = X.RowCount;
       var result = Matrix<double>.Build.Dense(n, n);
       for (int i = 0; i < n; ++i)
       {
-        var rowI = mat.Row(i);
+        var rowI = X.Row(i);
         for (int j = i; j < n; ++j)
         {
-          var rowJ = mat.Row(j);
+          var rowJ = X.Row(j);
           double dist = (rowI - rowJ).PointwisePower(2).Sum();
           result[i, j] = dist;
           result[j, i] = dist;
         }
       }
-      return result.ToRowArrays();
+      return result;
     }
 
     // ------------------------------------------------------
@@ -326,108 +325,76 @@ namespace TSNE
 
     // ------------------------------------------------------
 
-    public static double[][] MatLoad(string fn,
-      int[] usecols, char sep, string comment)
+    public static Matrix<double> MatLoad(string fn, int[] usecols, char sep, string comment)
     {
-      // count number of non-comment lines
-      int nRows = 0;
-      string line = "";
-      FileStream ifs = new FileStream(fn, FileMode.Open);
-      StreamReader sr = new StreamReader(ifs);
-      while ((line = sr.ReadLine()) != null)
-        if (line.StartsWith(comment) == false)
-          ++nRows;
-      sr.Close(); ifs.Close();
-
-      // make result matrix
-      int nCols = usecols.Length;
-      double[][] result = new double[nRows][];
-      for (int r = 0; r < nRows; ++r)
-        result[r] = new double[nCols];
-
-      line = "";
-      string[] tokens = null;
-      ifs = new FileStream(fn, FileMode.Open);
-      sr = new StreamReader(ifs);
-
-      int i = 0;
-      while ((line = sr.ReadLine()) != null)
+      var rows = new System.Collections.Generic.List<double[]>();
+      using (var sr = new StreamReader(fn))
       {
-        if (line.StartsWith(comment) == true)
-          continue;
-        tokens = line.Split(sep);
-        for (int j = 0; j < nCols; ++j)
+        string line;
+        while ((line = sr.ReadLine()) != null)
         {
-          int k = usecols[j];  // into tokens
-          result[i][j] = double.Parse(tokens[k]);
+          if (line.StartsWith(comment)) continue;
+          var tokens = line.Split(sep);
+          var row = new double[usecols.Length];
+          for (int j = 0; j < usecols.Length; ++j)
+            row[j] = double.Parse(tokens[usecols[j]]);
+          rows.Add(row);
         }
-        ++i;
       }
-      sr.Close(); ifs.Close();
-      return result;
+      return Matrix<double>.Build.DenseOfRows(rows);
     }
 
     // ------------------------------------------------------
 
-    public static void MatSave(double[][] data,
-      string fn, char sep, int dec)
+    public static void MatSave(Matrix<double> data, string fn, char sep, int dec)
     {
-      int nRows = data.Length;
-      int nCols = data[0].Length;
-      FileStream ofs = new FileStream(fn,
-        FileMode.Create);
-      StreamWriter sw = new StreamWriter(ofs);
-      for (int i = 0; i < nRows; ++i)
+      int nRows = data.RowCount;
+      int nCols = data.ColumnCount;
+      using (var ofs = new FileStream(fn, FileMode.Create))
+      using (var sw = new StreamWriter(ofs))
       {
-        string line = "";
-        for (int j = 0; j < nCols; ++j)
+        for (int i = 0; i < nRows; ++i)
         {
-          line += data[i][j].ToString("F" + dec);
-          if (j < nCols - 1)
-            line += sep;
+          string line = "";
+          for (int j = 0; j < nCols; ++j)
+          {
+            line += data[i, j].ToString("F" + dec);
+            if (j < nCols - 1)
+              line += sep;
+          }
+          sw.WriteLine(line);
         }
-        sw.WriteLine(line); // includes NL
       }
-
-      sw.Close();
-      ofs.Close();
     }
 
     // ------------------------------------------------------
 
-    public static int[] VecLoad(string fn, int usecol,
-      string comment)
+    public static Vector<double> VecLoad(string fn, int usecol, string comment)
     {
       char dummySep = ',';
-      double[][] tmp = MatLoad(fn, new int[] { usecol },
-        dummySep, comment);
-      int n = tmp.Length;
-      int[] result = new int[n];
-      for (int i = 0; i < n; ++i)
-        result[i] = (int)tmp[i][0];
-      return result;
+      var mat = MatLoad(fn, new int[] { usecol }, dummySep, comment);
+      return mat.Column(0);
     }
 
     // ------------------------------------------------------
 
-    public static void MatShow(double[][] M, int dec,
-      int wid, bool showIndices)
+    public static void MatShow(Matrix<double> M, int dec, int wid, bool showIndices)
     {
       double small = 1.0 / Math.Pow(10, dec);
-      for (int i = 0; i < M.Length; ++i)
+      int nRows = M.RowCount;
+      int nCols = M.ColumnCount;
+      for (int i = 0; i < nRows; ++i)
       {
-        if (showIndices == true)
+        if (showIndices)
         {
-          int pad = M.Length.ToString().Length;
-          Console.Write("[" + i.ToString().
-            PadLeft(pad) + "]");
+          int pad = nRows.ToString().Length;
+          Console.Write("[" + i.ToString().PadLeft(pad) + "]");
         }
-        for (int j = 0; j < M[0].Length; ++j)
+        for (int j = 0; j < nCols; ++j)
         {
-          double v = M[i][j];
+          double v = M[i, j];
           if (Math.Abs(v) < small) v = 0.0;
-          Console.Write(v.ToString("F" + dec).
-            PadLeft(wid));
+          Console.Write(v.ToString("F" + dec).PadLeft(wid));
         }
         Console.WriteLine("");
       }
@@ -503,14 +470,10 @@ namespace TSNE
 
     // ------------------------------------------------------
 
-    private static double[][] MatCopy(double[][] m)
+    // Refactored to use Math.NET Numerics
+    private static Matrix<double> MatCopy(Matrix<double> m)
     {
-      int nRows = m.Length; int nCols = m[0].Length;
-      double[][] result = MatCreate(nRows, nCols);
-      for (int i = 0; i < nRows; ++i)
-        for (int j = 0; j < nCols; ++j)
-          result[i][j] = m[i][j];
-      return result;
+      return m.Clone();
     }
 
     // ------------------------------------------------------
@@ -547,53 +510,42 @@ namespace TSNE
 
     // ------------------------------------------------------
 
-    private static double[] MatExtractRow(double[][] M,
-      int row)
+    // Refactored to use Math.NET Numerics
+    private static Vector<double> MatExtractRow(Matrix<double> M, int row)
     {
-      int cols = M[0].Length;
-      double[] result = new double[cols];
-      for (int j = 0; j < cols; ++j)
-        result[j] = M[row][j];
+      return M.Row(row);
+    }
+
+    // ------------------------------------------------------
+
+    // Refactored to use Math.NET Numerics
+    private static Vector<double> MatExtractColumn(Matrix<double> M, int col)
+    {
+      return M.Column(col);
+    }
+
+    // ------------------------------------------------------
+
+    // Refactored to use Math.NET Numerics
+    private static Matrix<double> VecMinusMat(Vector<double> v, Matrix<double> M)
+    {
+      // Returns a matrix where each row is v - M.Row(i)
+      int nRows = M.RowCount;
+      int nCols = M.ColumnCount;
+      var result = Matrix<double>.Build.Dense(nRows, nCols);
+      for (int i = 0; i < nRows; ++i)
+      {
+        result.SetRow(i, v - M.Row(i));
+      }
       return result;
     }
 
     // ------------------------------------------------------
 
-    private static double[] MatExtractColumn(double[][] M,
-      int col)
+    // Refactored to use Math.NET Numerics
+    private static Vector<double> VecMult(Vector<double> v1, Vector<double> v2)
     {
-      int rows = M.Length;
-      double[] result = new double[rows];
-      for (int i = 0; i < rows; ++i)
-        result[i] = M[i][col];
-      return result;
-    }
-
-    // ------------------------------------------------------
-
-    private static double[][] VecMinusMat(double[] v,
-      double[][] M)
-    {
-      // add v row vector to each row of -M
-      // B = A - Y  # 10x2; -Y + A vector to each row
-      double[][] result = MatCopy(M);
-      for (int i = 0; i < M.Length; ++i)
-        for (int j = 0; j < M[0].Length; ++j)
-          result[i][j] = -M[i][j] + v[j];
-      return result;
-    }
-
-    // ------------------------------------------------------
-
-    private static double[] VecMult(double[] v1,
-      double[] v2)
-    {
-      // element-wise multiplication
-      int n = v1.Length;
-      double[] result = new double[n];
-      for (int i = 0; i < n; ++i)
-        result[i] = v1[i] * v2[i];
-      return result;
+      return v1.PointwiseMultiply(v2);
     }
 
     // ------------------------------------------------------
