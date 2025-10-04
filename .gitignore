@@ -17,6 +17,10 @@ x86/
 [Aa][Rr][Mm]64/
 bin/
 obj/
+*.exe
+*.dll
+*.pdb
+*.cache
 
 # NuGet
 *.nupkg
