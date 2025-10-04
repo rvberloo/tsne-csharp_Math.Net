@@ -11,7 +11,7 @@ namespace TSNE
 {
   internal class TSNEProgram
   {
-    static void Main(string[] args)
+    public static void Main(string[] args)
     {
       Console.WriteLine("\nBegin t-SNE with C# demo ");
 
@@ -32,15 +32,14 @@ namespace TSNE
       //X[11] = new double[] { 45.4, 14.6, 211, 4800 };  // 2
 
       // load data from file
-      string ifn = @"C:\VSM\TSNE\Data\penguin_12.txt";
+      string ifn = "penguin_12.txt";
       // # species, bill len, wid, flip len , weight
       // 0, 39.5, 17.4, 186, 3800
       // 0, 40.3, 18.0, 195, 3250
       // . . .
       // 2, 45.4, 14.6, 211, 4800
-      double[][] X = TSNE.MatLoad(ifn,
-        new int[] { 1, 2, 3, 4 }, ',', "#"); // not col [0]
 
+      var X = TSNE.MatLoad(ifn, new int[] { 1, 2, 3, 4 }, ',', "#");
       Console.WriteLine("\nSource data: ");
       TSNE.MatShow(X, 1, 10, true);
 
@@ -49,13 +48,13 @@ namespace TSNE
       int perplexity = 3;
       Console.WriteLine("Setting maxIter = " + maxIter);
       Console.WriteLine("Setting perplaxity = " + perplexity);
-      double[][] reduced = TSNE.Reduce(X, maxIter, perplexity);
+      var reduced = TSNE.Reduce(X, maxIter, perplexity);
 
       Console.WriteLine("\nReduced data: ");
       TSNE.MatShow(reduced, 2, 10, true);
 
       Console.WriteLine("\nSaving reduced data for a graph ");
-      string ofn = @"C:\VSM\TSNE\Data\penguin_reduced.txt";
+      string ofn = "penguin_reduced.txt";
       TSNE.MatSave(reduced, ofn, ',', 2);
 
       Console.WriteLine("\nEnd t-SNE demo ");
@@ -66,44 +65,45 @@ namespace TSNE
   // ========================================================
 
   public class TSNE
-  {
-    // wrapper class for static Reduce() and its helpers
 
-    public static double[][] Reduce(double[][] X, int maxIter, int perplexity)
+  {
+    // Computes conditional probabilities and entropy for a distance vector and beta
+    private static double[] ComputePH(double[] di, double beta, out double h)
     {
-      int n = X.Length;
+      var vdi = Vector<double>.Build.DenseOfArray(di);
+      var p = (-vdi * beta).PointwiseExp();
+      double sumP = p.Sum();
+      if (sumP == 0.0) sumP = 1.0e-12; // avoid div by 0
+      double sumDP = vdi.PointwiseMultiply(p).Sum();
+      double hh = Math.Log(sumP) + (beta * sumDP / sumP);
+      p = p / sumP;
+      h = hh;
+      return p.ToArray();
+    }
+
+    public static Matrix<double> Reduce(Matrix<double> X, int maxIter, int perplexity)
+    {
+      int n = X.RowCount;
       double initialMomentum = 0.5;
       double finalMomentum = 0.8;
       double eta = 500.0;
       double minGain = 0.01;
 
-      // initialize result Y using Math.NET
       Gaussian g = new Gaussian(mean: 0.0, sd: 1.0, seed: 1);
       var Y = Matrix<double>.Build.Dense(n, 2, (i, j) => g.NextGaussian());
       var dY = Matrix<double>.Build.Dense(n, 2);
       var iY = Matrix<double>.Build.Dense(n, 2);
       var Gains = Matrix<double>.Build.Dense(n, 2, 1.0);
 
-      // Convert X to Math.NET matrix for ComputeP
-      var P = ToMatrix(ComputeP(X, perplexity));
+      var P = ComputeP(X, perplexity);
       P = MatAdd(P, MatTranspose(P));
       double sumP = MatSum(P);
-      for (int i = 0; i < n; ++i)
-      {
-        for (int j = 0; j < n; ++j)
-        {
-          P[i, j] = (P[i, j] * 4.0) / sumP;
-          if (P[i, j] < 1.0e-12)
-            P[i, j] = 1.0e-12;
-        }
-      }
+      P = P.Multiply(4.0 / sumP);
+      P.MapInplace(x => x < 1.0e-12 ? 1.0e-12 : x);
 
       for (int iter = 0; iter < maxIter; ++iter)
       {
-        // rowSums = sum of squares of each row in Y
         var rowSums = Y.PointwisePower(2).RowSums();
-
-        // Num = -2 * (Y * Y^T) and normalize
         var Num = MatProduct(Y, MatTranspose(Y)).Multiply(-2.0);
         for (int i = 0; i < n; ++i)
           Num.SetRow(i, Num.Row(i) + rowSums[i]);
@@ -114,14 +114,13 @@ namespace TSNE
         for (int i = 0; i < n; ++i)
           Num[i, i] = 0.0;
 
-        double sumNum = Num.Sum();
+        double sumNum = MatSum(Num);
         var Q = Num.Clone();
         Q = Q.Divide(sumNum);
         Q.MapInplace(x => x < 1.0e-12 ? 1.0e-12 : x);
 
         var PminusQ = P - Q;
 
-        // Compute dY using Math.NET Numerics
         for (int i = 0; i < n; ++i)
         {
           var tmpA = Y.Row(i);
@@ -135,7 +134,6 @@ namespace TSNE
 
         double momentum = (iter < 20) ? initialMomentum : finalMomentum;
 
-        // compute Gains using Math.NET
         for (int i = 0; i < n; ++i)
         {
           for (int j = 0; j < 2; ++j)
@@ -148,11 +146,9 @@ namespace TSNE
         }
         Gains.MapInplace(x => x < minGain ? minGain : x);
 
-        // use dY to compute iY to update result Y
         iY = iY.Multiply(momentum).Subtract(Gains.PointwiseMultiply(dY).Multiply(eta));
         Y = Y.Add(iY);
 
-        // Center Y by subtracting column means
         var meansY = Y.ColumnSums() / n;
         var meansTile = Matrix<double>.Build.Dense(n, 2, (i, j) => meansY[j]);
         Y = Y - meansTile;
@@ -170,40 +166,37 @@ namespace TSNE
               P[i, j] /= 4.0;
         }
       }
-      return Y.ToRowArrays();
+
+      return Y;
     }
 
     // ------------------------------------------------------
 
-    private static double[][] ComputeP(double[][] X,
-      int perplexity)
+    private static Matrix<double> ComputeP(Matrix<double> X, int perplexity)
     {
       // helper for Reduce()
       double tol = 1.0e-5;
-      int n = X.Length; int d = X[0].Length;
-      double[][] D = MatSquaredDistances(X);
-      double[][] P = MatCreate(n, n);
+      int n = X.RowCount; int d = X.ColumnCount;
+      var D = MatSquaredDistances(X);
+      var P = Matrix<double>.Build.Dense(n, n);
       double[] beta = new double[n];
-      for (int i = 0; i < n; ++i)
-        beta[i] = 1.0;
-      double logU = Math.Log(perplexity);
       for (int i = 0; i < n; ++i)
       {
         double betaMin = -1.0e15;
         double betaMax = 1.0e15;
-        // ith row of D[][], without 0.0 at [i][i]
+        // ith row of D, without 0.0 at [i,i]
         double[] Di = new double[n - 1];
-        int k = 0; // points into Di
-        for (int j = 0; j < n; ++j) // j points D[][]
+        int k = 0;
+        for (int j = 0; j < n; ++j)
         {
           if (j == i) continue;
-          Di[k] = D[i][j];
+          Di[k] = D[i, j];
           ++k;
         }
 
         double h;
-        double[] currP = ComputePH(Di, beta[i], out h);
-        double hDiff = h - logU;
+        double[] currP = ComputePH(Di, beta[i] == 0 ? 1.0 : beta[i], out h);
+        double hDiff = h - Math.Log(perplexity);
         int ct = 0;
         while (Math.Abs(hDiff) > tol && ct < 50)
         {
@@ -223,71 +216,20 @@ namespace TSNE
             else
               beta[i] = (beta[i] + betaMin) / 2.0;
           }
-          // recompute
           currP = ComputePH(Di, beta[i], out h);
-          hDiff = h - logU;
+          hDiff = h - Math.Log(perplexity);
           ++ct;
-        } // while
+        }
 
-        k = 0; // points into currP vector
+        k = 0;
         for (int j = 0; j < n; ++j)
         {
-          if (i == j) P[i][j] = 0.0;
-          else P[i][j] = currP[k++];
+          if (i == j) P[i, j] = 0.0;
+          else P[i, j] = currP[k++];
         }
-      } // for i
-
-      return P;
-    } // ComputeP
-
-    // ------------------------------------------------------
-
-    private static double[] ComputePH(double[] di,
-      double beta, out double h)
-    {
-      // helper for ComputeP()
-      // return p vector explicitly, h val as out param
-      int n = di.Length; // (n-1) relative to D
-      double[] p = new double[n];
-      double sumP = 0.0;
-      for (int j = 0; j < n; ++j)
-      {
-        p[j] = Math.Exp(-1 * di[j] * beta);
-        sumP += p[j];
       }
-      if (sumP == 0.0) sumP = 1.0e-12; // avoid div by 0
-
-      double sumDP = 0.0;
-      for (int j = 0; j < n; ++j)
-        sumDP += di[j] * p[j];
-
-      double hh = Math.Log(sumP) + (beta * sumDP / sumP);
-      for (int j = 0; j < n; ++j)
-        p[j] /= sumP;
-
-      h = hh;
-      return p; // a new row for P[][]
+      return P;
     }
-
-    // ------------------------------------------------------
-    //
-    // 32 secondary helper functions, one helper class
-    //
-    // MatSquaredDistances, MatCreate, MatOnes,
-    // MatLoad, MatSave, VecLoad,
-    // MatShow, MatShow, MatShow, (3 overloads)
-    // VecShow, VecShow, MatCopy, MatAdd, MatTranspose,
-    // MatProduct, MatDiff, MatExtractRow,
-    // MatExtractColumn, VecMinusMat, VecMult, VecTile,
-    // MatMultiply, MatMultLogDivide, MatRowSums,
-    // MatColumnSums, MatColumnMeans, MatReplaceRow,
-    // MatVecAdd, MatAddScalar, MatInvertElements,
-    // MatSum, MatZeroOutDiag
-    //
-    // Gaussian class NextGaussian()
-    //
-    // ------------------------------------------------------
-
     // Refactored to use Math.NET Numerics
     private static Matrix<double> MatSquaredDistances(Matrix<double> X)
     {
@@ -309,7 +251,6 @@ namespace TSNE
 
     // ------------------------------------------------------
 
-    // Refactored to use Math.NET Numerics
     private static Matrix<double> MatCreate(int rows, int cols)
     {
       return Matrix<double>.Build.Dense(rows, cols);
@@ -317,7 +258,6 @@ namespace TSNE
 
     // ------------------------------------------------------
 
-    // Refactored to use Math.NET Numerics
     private static Matrix<double> MatOnes(int rows, int cols)
     {
       return Matrix<double>.Build.Dense(rows, cols, 1.0);
@@ -375,8 +315,6 @@ namespace TSNE
       var mat = MatLoad(fn, new int[] { usecol }, dummySep, comment);
       return mat.Column(0);
     }
-
-    // ------------------------------------------------------
 
     public static void MatShow(Matrix<double> M, int dec, int wid, bool showIndices)
     {
@@ -660,7 +598,7 @@ namespace TSNE
     // Refactored to use Math.NET Numerics
     private static double MatSum(Matrix<double> M)
     {
-      return M.Sum();
+      return M.Enumerate().Sum();
     }
 
     // ------------------------------------------------------
@@ -708,13 +646,6 @@ namespace TSNE
       return Matrix<double>.Build.DenseOfRows(array);
     }
 
-    private static double[][] ToArray(Matrix<double> matrix)
-    {
-      return matrix.ToRowArrays();
-    }
+  } // end class TSNE
+} // end namespace TSNE
 
-  } // class TSNE
-
-  // ========================================================
-
-} // ns

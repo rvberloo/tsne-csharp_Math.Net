@@ -1,2 +1,2 @@
-﻿// See https://aka.ms/new-console-template for more information
-Console.WriteLine("Hello, World!");
+﻿// Entry point for dotnet run
+TSNE.TSNEProgram.Main(Array.Empty<string>());
