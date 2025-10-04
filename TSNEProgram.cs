@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using MathNet.Numerics.LinearAlgebra;
+
 
 // Paper: "Visualizing Data using t-SNE" (2008), 
 //   L. van der Maaten and G. Hinton.
@@ -430,7 +432,7 @@ namespace TSNE
 
     // ------------------------------------------------------
 
-    public static void MatSave(double[][] data, 
+    public static void MatSave(double[][] data,
       string fn, char sep, int dec)
     {
       int nRows = data.Length;
@@ -576,16 +578,10 @@ namespace TSNE
 
     // ------------------------------------------------------
 
-    private static double[][] MatAdd(double[][] mA,
-      double[][] mB)
+    // Refactored to use Math.NET Numerics
+    private static Matrix<double> MatAdd(Matrix<double> mA, Matrix<double> mB)
     {
-      int rows = mA.Length;
-      int cols = mA[0].Length;
-      double[][] result = MatCreate(rows, cols);
-      for (int i = 0; i < rows; ++i)
-        for (int j = 0; j < cols; ++j)
-          result[i][j] = mA[i][j] + mB[i][j];
-      return result;
+      return mA + mB;
     }
 
     // ------------------------------------------------------
@@ -878,6 +874,17 @@ namespace TSNE
     } // Gaussian
 
     // ------------------------------------------------------
+
+    // Conversion helpers between double[][] and Matrix<double>
+    private static Matrix<double> ToMatrix(double[][] array)
+    {
+      return Matrix<double>.Build.DenseOfRows(array);
+    }
+
+    private static double[][] ToArray(Matrix<double> matrix)
+    {
+      return matrix.ToRowArrays();
+    }
 
   } // class TSNE
 
