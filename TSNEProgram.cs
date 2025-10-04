@@ -719,28 +719,18 @@ namespace TSNE
 
     // ------------------------------------------------------
 
-    private static double[] MatColumnSums(double[][] M)
+    // Refactored to use Math.NET Numerics
+    private static Vector<double> MatColumnSums(Matrix<double> M)
     {
-      int nRows = M.Length; int nCols = M[0].Length;
-      double[] result = new double[nCols];
-      for (int j = 0; j < nCols; ++j)
-        for (int i = 0; i < nRows; ++i)
-          result[j] += M[i][j];
-      return result;
+      return M.ColumnSums();
     }
 
     // ------------------------------------------------------
 
-    private static double[] MatColumnMeans(double[][] M)
+    // Refactored to use Math.NET Numerics
+    private static Vector<double> MatColumnMeans(Matrix<double> M)
     {
-      int nRows = M.Length; int nCols = M[0].Length;
-      double[] result = new double[nCols];
-      for (int j = 0; j < nCols; ++j)
-        for (int i = 0; i < nRows; ++i)
-          result[j] += M[i][j];
-      for (int j = 0; j < nCols; ++j)
-        result[j] /= nRows;
-      return result;
+      return M.ColumnSums() / M.RowCount;
     }
 
     // ------------------------------------------------------
@@ -795,14 +785,10 @@ namespace TSNE
 
     // ------------------------------------------------------
 
-    static double MatSum(double[][] M)
+    // Refactored to use Math.NET Numerics
+    private static double MatSum(Matrix<double> M)
     {
-      int nr = M.Length; int nc = M[0].Length;
-      double result = 0.0;
-      for (int i = 0; i < nr; ++i)
-        for (int j = 0; j < nc; ++j)
-          result += M[i][j];
-      return result;
+      return M.Sum();
     }
 
     // ------------------------------------------------------
