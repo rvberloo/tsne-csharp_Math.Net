@@ -4,6 +4,9 @@
 *.suo
 *.userosscache
 *.sln.docstates
+*.cache
+*.dll
+*.pdb
 
 # Build results
 [Dd]ebug/
