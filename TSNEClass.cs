@@ -20,7 +20,7 @@ namespace TSNE
             double eta = 500.0;
             double minGain = 0.01;
 
-            GaussianMersenne g = new GaussianMersenne(mean: 0.0, sd: 1.0, seed: 1);
+            Gaussian g = new Gaussian(mean: 0.0, sd: 1.0, seed: 1);
             var Y = Matrix<double>.Build.Dense(n, 2);
             //kept this double loop to maintain same data order as original code
             for (int i = 0; i < n; ++i)
@@ -636,14 +636,14 @@ namespace TSNE
         // ------------------------------------------------------
 
         // Conversion helpers between double[][] and Matrix<double>
-        private static Matrix<double> ToMatrix(double[][] array)
+        public static Matrix<double> ToMatrix(double[][] array)
         {
             return Matrix<double>.Build.DenseOfRows(array);
         }
 
         // ------------------------------------------------------
 
-        private static double[][] ToDoubleArray(Matrix<double> mat)
+        public static double[][] ToDoubleArray(Matrix<double> mat)
         {
             int nRows = mat.RowCount;
             int nCols = mat.ColumnCount;
