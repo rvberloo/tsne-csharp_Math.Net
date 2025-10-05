@@ -12,5 +12,15 @@
     <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
     <PackageReference Include="MathNet.Numerics.MKL.Win-x64" Version="3.0.0" />
   </ItemGroup>
+  <ItemGroup>
+		<Content Include="mnist_test.csv">
+				<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+  </ItemGroup>
+  <ItemGroup>
+		<Content Include="penguin_12.txt">
+				<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+  </ItemGroup>
 
 </Project>
