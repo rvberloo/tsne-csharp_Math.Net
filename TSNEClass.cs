@@ -20,7 +20,7 @@ namespace TSNE
             double eta = 500.0;
             double minGain = 0.01;
 
-            GaussianMersenne g = new GaussianMersenne(mean: 0.0, sd: 1.0, seed: 1);
+            Gaussian g = new Gaussian(mean: 0.0, sd: 1.0, seed: 1);
             var Y = Matrix<double>.Build.Dense(n, 2);
             //kept this double loop to maintain same data order as original code
             for (int i = 0; i < n; ++i)

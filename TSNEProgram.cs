@@ -27,13 +27,13 @@ namespace TSNE
             // load data from file
             //string ifn = "penguin_12.txt";
             //var X = TSNE.MatLoad(ifn, new int[] { 1, 2, 3, 4 }, ',', "#");
-            //int maxIter = 300;
+            //int maxIter = 500;
             //int perplexity = 3;
 
             //alternatively use the large MNIST test set and load2 for loading all columns without specifying them
             string ifn = "mnist_test.csv";
             var X = TSNE.MatLoad2(ifn, ',', "#");
-            int maxIter = 500;
+            int maxIter = 20;
             int perplexity = 10;
 
             Console.WriteLine("Data loaded from " + ifn);
@@ -52,12 +52,15 @@ namespace TSNE
 
             Stopwatch sw = new Stopwatch();
             sw.Start();
-            Console.WriteLine("\nApplying PCA reduction to 50 components ");
-            // Step 1: Reduce dimensions with PCA (e.g., to 50 components)
-            var Xpca = PCA.Reduce(X, 50);
+            if (X.ColumnCount > 100)
+            {
+                Console.WriteLine("\nApplying PCA reduction to 50 components ");
+                // Step 1: Reduce dimensions with PCA (e.g., to 50 components)
+                var Xpca = PCA.Reduce(X, 50);
 
-            X = Xpca; // use PCA result as input to t-SNE
-                      // 
+                X = Xpca; // use PCA result as input to t-SNE
+            }
+
             Console.WriteLine("\nApplying t-SNE reduction ");
             Console.WriteLine("Setting maxIter = " + maxIter);
             Console.WriteLine("Setting perplexity = " + perplexity);
