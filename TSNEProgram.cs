@@ -21,10 +21,15 @@ namespace TSNE
             CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
             CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
             Control.UseNativeMKL();
+            Console.WriteLine("Active Linear Algebra Provider: " + Control.Describe());
             Console.WriteLine("\nBegin t-SNE with C# demo ");
 
             Console.WriteLine("\nLoading source data ");
-            //load data from file
+            // load data from file
+            //string ifn = "penguin_12.txt";
+            //var X = TSNE.MatLoad(ifn, new int[] { 1, 2, 3, 4 }, ',', "#");
+            //int maxIter = 500;
+            //int perplexity = 3;
 
             string ifn = "penguin_12.txt";
             var X = TSNE.MatLoad(ifn, new int[] { 1, 2, 3, 4 }, ',', "#");
@@ -69,15 +74,15 @@ namespace TSNE
             //Step 2: Apply t-SNE to reduce to 2 or 3 dimensions
             var reduced = TSNE.Reduce(X, maxIter, perplexity);
             sw.Stop();
-            Console.WriteLine("t-SNE reduction completed in " + sw.ElapsedMilliseconds / 1000.0 + " s");
-
+            
             Console.WriteLine("\nReduced data: ");
-            TSNE.MatShow(reduced, 2, 10, true);
+            TSNE.MatShow(reduced, 2, 10, 20);
 
             Console.WriteLine("\nSaving reduced data for a graph ");
             string ofn = "penguin_reduced.txt";
             TSNE.MatSave(reduced, ofn, ',', 2);
 
+            Console.WriteLine("t-SNE reduction completed in " + sw.ElapsedMilliseconds / 1000.0 + " s");
             Console.WriteLine("\nEnd t-SNE demo ");
             Console.ReadLine();
         }
