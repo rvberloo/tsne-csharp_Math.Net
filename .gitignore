@@ -21,6 +21,8 @@ obj/
 *.dll
 *.pdb
 *.cache
+/obj/
+/bin/
 
 # NuGet
 *.nupkg
