@@ -6,25 +6,12 @@ using MathNet.Numerics.Distributions;
 using System.Diagnostics;
 using System.Threading;
 using MathNet.Numerics;
+using MathNet.Numerics.Random;
 
 namespace TSNE
 {
     public class TSNE
     {
-        // Computes conditional probabilities and entropy for a distance vector and beta
-        private static double[] ComputePH(double[] di, double beta, out double h)
-        {
-            var vdi = Vector<double>.Build.DenseOfArray(di);
-            var p = (-vdi * beta).PointwiseExp();
-            double sumP = p.Sum();
-            if (sumP == 0.0) sumP = 1.0e-12; // avoid div by 0
-            double sumDP = vdi.PointwiseMultiply(p).Sum();
-            double hh = Math.Log(sumP) + (beta * sumDP / sumP);
-            p = p / sumP;
-            h = hh;
-            return p.ToArray();
-        }
-
         public static Matrix<double> Reduce(Matrix<double> X, int maxIter, int perplexity)
         {
             int n = X.RowCount;
@@ -33,8 +20,9 @@ namespace TSNE
             double eta = 500.0;
             double minGain = 0.01;
 
-            Gaussian g = new Gaussian(mean: 0.0, sd: 1.0, seed: 1);
+            GaussianMersenne g = new GaussianMersenne(mean: 0.0, sd: 1.0, seed: 1);
             var Y = Matrix<double>.Build.Dense(n, 2);
+            //kept this double loop to maintain same data order as original code
             for (int i = 0; i < n; ++i)
                 for (int j = 0; j < 2; ++j)
                     Y[i, j] = g.NextGaussian();
@@ -111,13 +99,27 @@ namespace TSNE
 
                 if (iter == 100)
                 {
-                    for (int i = 0; i < n; ++i)
-                        for (int j = 0; j < n; ++j)
-                            P[i, j] /= 4.0;
+                    P.MapInplace(x => x / 4.0);
                 }
             }
 
             return Y;
+        }
+        
+        // ------------------------------------------------------
+        
+        // Computes conditional probabilities and entropy for a distance vector and beta
+        private static double[] ComputePH(double[] di, double beta, out double h)
+        {
+            var vdi = Vector<double>.Build.DenseOfArray(di);
+            var p = (-vdi * beta).PointwiseExp();
+            double sumP = p.Sum();
+            if (sumP == 0.0) sumP = 1.0e-12; // avoid div by 0
+            double sumDP = vdi.PointwiseMultiply(p).Sum();
+            double hh = Math.Log(sumP) + (beta * sumDP / sumP);
+            p = p / sumP;
+            h = hh;
+            return p.ToArray();
         }
 
         // ------------------------------------------------------
@@ -183,8 +185,6 @@ namespace TSNE
             return P;
         }
         // Refactored to use Math.NET Numerics
-        //then refactored again to use
-        // Dij = ||xi - xj||^2 = ||xi||^2 + ||xj||^2 - 2*xi.xj
 
         // private static Matrix<double> MatSquaredDistances(Matrix<double> X)
         // {
@@ -204,6 +204,8 @@ namespace TSNE
         //   return result;
         // }
 
+        // Refactored again to use more efficient approach
+        // Dij = ||xi - xj||^2 = ||xi||^2 + ||xj||^2 - 2*xi.xj
         private static Matrix<double> MatSquaredDistances(Matrix<double> X)
         {
             // X: n x d
@@ -254,7 +256,7 @@ namespace TSNE
         }
 
         // ------------------------------------------------------
-        //second load function that simply loads all columns without specifying which ones
+        //second load function that simplies loads all columns without specifying which ones
         public static Matrix<double> MatLoad2(string fn, char sep, string comment)
         {
             var rows = new System.Collections.Generic.List<double[]>();
@@ -288,7 +290,7 @@ namespace TSNE
                     string line = "";
                     for (int j = 0; j < nCols; ++j)
                     {
-                        line += data[i, j].ToString("F" + dec);
+                        line += data[i, j].ToString("F" + dec, CultureInfo.InvariantCulture);
                         if (j < nCols - 1)
                             line += sep;
                     }
@@ -305,7 +307,9 @@ namespace TSNE
             var mat = MatLoad(fn, new int[] { usecol }, dummySep, comment);
             return mat.Column(0);
         }
-
+       
+        // ------------------------------------------------------
+        
         public static void MatShow(Matrix<double> M, int dec, int wid, bool showIndices)
         {
             double small = 1.0 / Math.Pow(10, dec);
@@ -322,7 +326,7 @@ namespace TSNE
                 {
                     double v = M[i, j];
                     if (Math.Abs(v) < small) v = 0.0;
-                    Console.Write(v.ToString("F" + dec).PadLeft(wid));
+                    Console.Write(v.ToString("F" + dec, CultureInfo.InvariantCulture).PadLeft(wid));
                 }
                 Console.WriteLine("");
             }
@@ -330,55 +334,30 @@ namespace TSNE
 
         // ------------------------------------------------------
 
-        public static void MatShow(double[][] M, int nCols,
-          int dec, int wid, bool showIndices)
+        public static void MatShow(Matrix<double> M, int dec, int wid, int nRows)
         {
             double small = 1.0 / Math.Pow(10, dec);
-            for (int i = 0; i < M.Length; ++i)
+            int nCols = M.ColumnCount;
+            int nRowsToShow = Math.Min(nRows, M.RowCount);
+            for (int i = 0; i < nRowsToShow; ++i)
             {
-                if (showIndices == true)
-                {
-                    int pad = M.Length.ToString().Length;
-                    Console.Write("[" + i.ToString().
-                      PadLeft(pad) + "]");
-                }
                 for (int j = 0; j < nCols; ++j)
                 {
-                    double v = M[i][j];
+                    double v = M[i, j];
                     if (Math.Abs(v) < small) v = 0.0;
-                    Console.Write(v.ToString("F" + dec).
-                      PadLeft(wid));
-                }
-                Console.WriteLine(" . . . ");
-            }
-        }
-
-        // ------------------------------------------------------
-
-        public static void MatShow(double[][] M, int dec,
-          int wid, int nRows)
-        {
-            double small = 1.0 / Math.Pow(10, dec);
-            for (int i = 0; i < nRows; ++i)
-            {
-                for (int j = 0; j < M[0].Length; ++j)
-                {
-                    double v = M[i][j];
-                    if (Math.Abs(v) < small) v = 0.0;
-                    Console.Write(v.ToString("F" + dec).
-                      PadLeft(wid));
+                    Console.Write(v.ToString("F" + dec, CultureInfo.InvariantCulture).PadLeft(wid));
                 }
                 Console.WriteLine("");
             }
-            if (nRows < M.Length)
+            if (nRows < M.RowCount)
                 Console.WriteLine(". . . ");
         }
 
         // ------------------------------------------------------
 
-        public static void VecShow(int[] vec, int wid)
+        public static void VecShow(Vector<int> vec, int wid)
         {
-            int n = vec.Length;
+            int n = vec.Count;
             for (int i = 0; i < n; ++i)
                 Console.Write(vec[i].ToString().PadLeft(wid));
             Console.WriteLine("");
@@ -386,12 +365,12 @@ namespace TSNE
 
         // ------------------------------------------------------
 
-        public static void VecShow(double[] vec, int decimals,
+        public static void VecShow(Vector<double> vec, int decimals,
           int wid)
         {
-            int n = vec.Length;
+            int n = vec.Count;
             for (int i = 0; i < n; ++i)
-                Console.Write(vec[i].ToString("F" + decimals).
+                Console.Write(vec[i].ToString("F" + decimals, CultureInfo.InvariantCulture).
                   PadLeft(wid));
             Console.WriteLine("");
         }
@@ -603,7 +582,7 @@ namespace TSNE
 
         // ------------------------------------------------------
 
-        // nested Gaussian to init TSNE.Reduce() result
+        // original: nested Gaussian to init TSNE.Reduce() result
         class Gaussian
         {
             private Random rnd;
@@ -628,6 +607,32 @@ namespace TSNE
             }
         } // Gaussian
 
+
+        //alternative class using a better Random Number Generator
+        class GaussianMersenne
+        {
+            private MersenneTwister rnd;
+            private double mean;
+            private double sd;
+
+            public GaussianMersenne(double mean, double sd, int seed)
+            {
+                this.rnd = new MersenneTwister(seed);
+                this.mean = mean;
+                this.sd = sd;
+            }
+
+            public double NextGaussian()
+            {
+                double u1 = this.rnd.NextDouble();
+                double u2 = this.rnd.NextDouble();
+                double left = Math.Cos(2.0 * Math.PI * u1);
+                double right = Math.Sqrt(-2.0 * Math.Log(u2));
+                double z = left * right;
+                return this.mean + (z * this.sd);
+            }
+        } // Gaussian
+
         // ------------------------------------------------------
 
         // Conversion helpers between double[][] and Matrix<double>
@@ -635,6 +640,8 @@ namespace TSNE
         {
             return Matrix<double>.Build.DenseOfRows(array);
         }
+
+        // ------------------------------------------------------
 
         private static double[][] ToDoubleArray(Matrix<double> mat)
         {
