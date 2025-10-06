@@ -10,7 +10,8 @@
         "dependencies": {
           "Accord.MachineLearning": "3.8.0",
           "MathNet.Numerics": "5.0.0",
-          "MathNet.Numerics.MKL.Win-x64": "3.0.0"
+          "MathNet.Numerics.MKL.Win-x64": "3.0.0",
+          "UMAP": "1.0.34015"
         },
         "runtime": {
           "tsne-csharp_Math.Net.dll": {}
@@ -99,6 +100,18 @@
             "fileVersion": "5.0.0.0"
           }
         }
+      },
+      "System.Memory/4.5.5": {},
+      "UMAP/1.0.34015": {
+        "dependencies": {
+          "System.Memory": "4.5.5"
+        },
+        "runtime": {
+          "lib/net7.0/UMAP.dll": {
+            "assemblyVersion": "1.0.34015.0",
+            "fileVersion": "1.0.34015.0"
+          }
+        }
       }
     }
   },
@@ -156,6 +169,20 @@
       "sha512": "sha512-cCOM4ImHjdbpD2iR4/6mVFq+sD0sI5hXlAYJXIKmob+20OiA7QQ259vY4GLXYOLBhy35D2QjGmBlgdzNNkuepw==",
       "path": "mathnet.numerics.providers.mkl/5.0.0",
       "hashPath": "mathnet.numerics.providers.mkl.5.0.0.nupkg.sha512"
+    },
+    "System.Memory/4.5.5": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-XIWiDvKPXaTveaB7HVganDlOCRoj03l+jrwNvcge/t8vhGYKvqV+dMv6G4SAX2NoNmN0wZfVPTAlFwZcZvVOUw==",
+      "path": "system.memory/4.5.5",
+      "hashPath": "system.memory.4.5.5.nupkg.sha512"
+    },
+    "UMAP/1.0.34015": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-WxJ2W2rTnUieSFHZ6jlpAy3iIz3/gvHxw0JLoP4ZAS3x576D5iVmWjQoOC3MzB0D+74rzGMiQTcG39gwYlLHiw==",
+      "path": "umap/1.0.34015",
+      "hashPath": "umap.1.0.34015.nupkg.sha512"
     }
   }
 }

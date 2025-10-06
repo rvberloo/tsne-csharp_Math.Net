@@ -31,16 +31,16 @@ namespace TSNE
             //int maxIter = 500;
             //int perplexity = 3;
 
-            string ifn = "penguin_12.txt";
-            var X = TSNE.MatLoad(ifn, new int[] { 1, 2, 3, 4 }, ',', "#");
-            int maxIter = 300;
-            int perplexity = 3;
+            //string ifn = "penguin_12.txt";
+            //var X = TSNE.MatLoad(ifn, new int[] { 1, 2, 3, 4 }, ',', "#");
+            //int maxIter = 300;
+            //int perplexity = 3;
 
             //alternatively use the large MNIST test set and load2 for loading all columns without specifying them
-            //string ifn = "mnist_test.csv";
-            //var X = TSNE.MatLoad2(ifn, ',', "#");
-            //int maxIter = 500;
-            //int perplexity = 10;
+            string ifn = "mnist_test.csv";
+            var X = TSNE.MatLoad2(ifn, ',', "#");
+            int maxIter = 500;
+            int perplexity = 10;
 
             Console.WriteLine("Data loaded from " + ifn);
 
@@ -55,7 +55,18 @@ namespace TSNE
                 Console.WriteLine("");
             }
 
-            //var BHresult = TSNEAccord.Reduce(X, 2, perplexity);
+            var BHresult = TSNEAccord.Reduce(X, 2, perplexity);
+
+            var BTmatrix = TSNE.ToMatrix(BHresult);
+            TSNE.MatShow(BTmatrix, 2, 10, 20);
+            string ofn2 = "data_reducedAccord.txt";
+            TSNE.MatSave(BTmatrix, ofn2, ',', 2);
+
+            var umap = UMAPAnalysis.Reduce(X);
+            var umapmatrix = TSNE.ToMatrix(umap);
+            TSNE.MatShow(umapmatrix, 2, 10, 20);
+            string ofn3 = "data_reducedUMAP.txt";
+            TSNE.MatSave(umapmatrix, ofn3, ',', 2);
 
             Stopwatch sw = new Stopwatch();
             sw.Start();
@@ -79,8 +90,10 @@ namespace TSNE
             TSNE.MatShow(reduced, 2, 10, 20);
 
             Console.WriteLine("\nSaving reduced data for a graph ");
-            string ofn = "penguin_reduced.txt";
+            string ofn = "data_reduced.txt";
             TSNE.MatSave(reduced, ofn, ',', 2);
+            
+            
 
             Console.WriteLine("t-SNE reduction completed in " + sw.ElapsedMilliseconds / 1000.0 + " s");
             Console.WriteLine("\nEnd t-SNE demo ");
