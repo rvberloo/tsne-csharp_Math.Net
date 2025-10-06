@@ -5,11 +5,11 @@ The basic form of the t-SNE ("t-distributed Stochastic Neighbor Embedding") tech
 
 This C# implementation is a (mostly) direct translation of the original Python implementation written by researcher L. van der Maaten, who co-authored the original t-SNE paper. The original paper is "Visualizing Data using t-SNE" (2008), L. van der Maaten and G. Hinton. A link to the original Python implementation of t-SNE is at https://lvdmaaten.github.io/tsne/.
 
-1/10/2025 
+10/2025 
 The implementation was refactored to use MathNet.Numerics for matrix operations. This improved performance and reduced the amount of code.
 It also allows the use of MKL accelaration if MathNet.Numerics.MKL is installed.
 
-A second large dataset containing the MNIST handwritten digits was included in the examples. The MNIST data is available at http://yann.lecun.com/exdb/mnist/. The MNIST data contains 70,000 images of handwritten digits, each image being 28x28 pixels. Each image was flattened to a 784-element vector, and the t-SNE implementation was used to reduce the 70,000x784 dataset to a 70,000x2 dataset. The reduced data was then graphed using Python's matplotlib library. The graph shows that the t-SNE reduction accurately grouped the digits.
+A second large dataset containing the MNIST handwritten digits was included in the examples. The MNIST data is available at http://yann.lecun.com/exdb/mnist/. The MNIST test data contains 1,000 images of handwritten digits, each image being 28x28 pixels. Each image was flattened to a 784-element vector, and the t-SNE implementation was used to reduce the 1,000x784 dataset to a 1,000x2 dataset. The reduced data was then plotted and shows that the t-SNE reduction accurately grouped the digits.
 
 ## Demo Data
 
@@ -78,3 +78,5 @@ The graph shows that one species (2 = Gentoo) is distinct from the other two.
 
 The demo code in file TSNEProgram.cs is organized as a single C# wrapper class named TSNE that houses a static Reduce() function. The Reduce() function calls two primary helper functions, ComputeP() and ComputePH(). Then there are 32 secondary helper functions that do things, such as matrix addition, that are built into Python, but must be implemented in C#. The TNSE class also contains a nested Gaussian class, which is used to initialize the result reduced matrix to random Gaussain values with mean 0 and standard deviation 1.
 
+10/2025: After refactoring A PCA class was added thaqt allows pre-clustering the data before applying T-SNE. THis is a common way to speed up the algorithm
+The TSNEprogram was separated from the main TSNEClass file and a csproject to allow running in VScode was added
