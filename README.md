@@ -1,4 +1,4 @@
-# tsne-csharp
+# tsne-csharp  (Math.Net version)
 Implementation of t-SNE visualization using C#.
 
 The basic form of the t-SNE ("t-distributed Stochastic Neighbor Embedding") technique is very specific. It starts with source data that has n rows and 3 or more colmns, and creates a reduced dataset with n rows and 2 columns. The reduced data can be used to create an XY graph where the first column is used as the x values and the second column is used as the y values.
