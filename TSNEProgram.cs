@@ -85,7 +85,7 @@ namespace TSNE
             Console.WriteLine("Setting perplexity = " + perplexity);
             //Step 2: Apply t-SNE to reduce to 2 or 3 dimensions
             // Set this to true to enable Barnes-Hut t-SNE
-            bool useBarnesHut = false;
+            bool useBarnesHut = true;
             var reduced = TSNE.Reduce(X, maxIter, perplexity, useBarnesHut);
             sw.Stop();
 

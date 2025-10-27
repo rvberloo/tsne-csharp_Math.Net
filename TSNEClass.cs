@@ -92,18 +92,29 @@ namespace TSNE
                     for (int i = 0; i < n; ++i) indices.Add(i);
                     var tree = new Quadtree(Yarr, indices, minX, minY, maxX, maxY, maxLeaf);
 
-                    // Compute Barnes-Hut repulsive force for each point
+                    // Compute Barnes-Hut repulsive force for each point and accumulate sum_Q
                     var repulsive = Matrix<double>.Build.Dense(n, 2);
+                    double total_sum_Q = 0.0;
+                    double[] sum_Q_arr = new double[n];
                     for (int i = 0; i < n; ++i)
                     {
-                        double fx = 0.0, fy = 0.0;
-                        tree.ComputeRepulsiveForce(Y[i, 0], Y[i, 1], theta, ref fx, ref fy);
+                        double fx = 0.0, fy = 0.0, sum_Q = 0.0;
+                        tree.ComputeRepulsiveForce(Yarr, Y[i, 0], Y[i, 1], theta, ref fx, ref fy, ref sum_Q, i);
                         repulsive[i, 0] = fx;
                         repulsive[i, 1] = fy;
+                        sum_Q_arr[i] = sum_Q;
+                        total_sum_Q += sum_Q;
+                    }
+
+                    // Normalize repulsive force by total_sum_Q
+                    for (int i = 0; i < n; ++i)
+                    {
+                        repulsive[i, 0] /= total_sum_Q;
+                        repulsive[i, 1] /= total_sum_Q;
                     }
 
                     // Compute attractive force (P) exactly as in standard t-SNE
-                    for (int i = 0; i < n; ++i)
+                    Parallel.For(0, n, i =>
                     {
                         var tmpA = Y.Row(i);
                         var tmpB = Matrix<double>.Build.Dense(n, 2, (r, c) => tmpA[c] - Y[r, c]);
@@ -115,10 +126,10 @@ namespace TSNE
                                 attractive[j, c] = pij * tmpB[j, c];
                         }
                         var attractiveSum = attractive.ColumnSums();
-                        // Combine attractive and repulsive forces for gradient update
+                        // Combine attractive and normalized repulsive forces for gradient update
                         dY[i, 0] = 4.0 * (attractiveSum[0] - repulsive[i, 0]);
                         dY[i, 1] = 4.0 * (attractiveSum[1] - repulsive[i, 1]);
-                    }
+                    });
                 }
 
                 double momentum = (iter < 20) ? initialMomentum : finalMomentum;

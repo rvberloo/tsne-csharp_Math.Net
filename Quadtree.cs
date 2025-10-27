@@ -14,9 +14,9 @@ namespace TSNE
         public int Count; // number of points
 
         // Barnes-Hut repulsive force calculation for t-SNE
-        // Returns the repulsive force vector [fx, fy] for point (targetX, targetY)
+        // Returns the repulsive force vector [fx, fy] and normalization sum_Q for point (targetX, targetY)
         // theta: Barnes-Hut accuracy parameter (e.g., 0.5)
-        public void ComputeRepulsiveForce(double targetX, double targetY, double theta, ref double fx, ref double fy)
+        public void ComputeRepulsiveForce(double[,] Y, double targetX, double targetY, double theta, ref double fx, ref double fy, ref double sum_Q, int targetIdx = -1)
         {
             double dx = CenterX - targetX;
             double dy = CenterY - targetY;
@@ -25,16 +25,37 @@ namespace TSNE
             // Barnes-Hut criterion: if width / sqrt(distSq) < theta, treat as single body
             if (IsLeaf || (width / Math.Sqrt(distSq) < theta))
             {
-                // Repulsive force: Count / distSq * dx, dy
-                fx += Count * dx / distSq;
-                fy += Count * dy / distSq;
+                // Exclude self-interaction in leaf
+                if (IsLeaf && Points.Contains(targetIdx))
+                {
+                    foreach (var idx in Points)
+                    {
+                        if (idx == targetIdx) continue;
+                        double px = targetX - targetX; // always zero
+                        double py = targetY - targetY; // always zero
+                        double dxi = Y[idx, 0] - targetX;
+                        double dyi = Y[idx, 1] - targetY;
+                        double distSqi = dxi * dxi + dyi * dyi + 1e-8;
+                        double qij = 1.0 / (1.0 + distSqi);
+                        fx += qij * dxi;
+                        fy += qij * dyi;
+                        sum_Q += qij;
+                    }
+                }
+                else
+                {
+                    double q = Count * (1.0 / (1.0 + distSq));
+                    fx += q * dx;
+                    fy += q * dy;
+                    sum_Q += q;
+                }
             }
             else if (Children != null)
             {
                 foreach (var child in Children)
                 {
                     if (child != null)
-                        child.ComputeRepulsiveForce(targetX, targetY, theta, ref fx, ref fy);
+                        child.ComputeRepulsiveForce(Y, targetX, targetY, theta, ref fx, ref fy, ref sum_Q, targetIdx);
                 }
             }
         }
