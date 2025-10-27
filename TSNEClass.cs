@@ -41,33 +41,63 @@ namespace TSNE
             for (int iter = 0; iter < maxIter; ++iter)
             {
                 Console.WriteLine("Iteration " + iter);
-                var rowSums = Y.PointwisePower(2).RowSums();
-                var Num = MatProduct(Y, MatTranspose(Y)).Multiply(-2.0);
-                for (int i = 0; i < n; ++i)
-                    Num.SetRow(i, Num.Row(i) + rowSums[i]);
-                Num = Num.Transpose();
-                for (int i = 0; i < n; ++i)
-                    Num.SetRow(i, Num.Row(i) + rowSums[i]);
-                Num = Num.Add(1.0).PointwisePower(-1.0);
-                for (int i = 0; i < n; ++i)
-                    Num[i, i] = 0.0;
-
-                double sumNum = MatSum(Num);
-                var Q = Num.Clone();
-                Q = Q.Divide(sumNum);
-                Q.MapInplace(x => x < 1.0e-12 ? 1.0e-12 : x);
-
-                var PminusQ = P - Q;
-
-                for (int i = 0; i < n; ++i)
+                Matrix<double>? Q = null;
+                if (!useBarnesHut)
                 {
-                    var tmpA = Y.Row(i);
-                    var tmpB = Matrix<double>.Build.Dense(n, 2, (r, c) => tmpA[c] - Y[r, c]);
-                    var tmpK = PminusQ.Column(i).PointwiseMultiply(Num.Column(i));
-                    var tmpF = Matrix<double>.Build.Dense(n, 2, (r, c) => tmpK[r]);
-                    var tmpG = tmpF.PointwiseMultiply(tmpB);
-                    var tmpZ = tmpG.ColumnSums();
-                    dY.SetRow(i, tmpZ);
+                    var rowSums = Y.PointwisePower(2).RowSums();
+                    var Num = MatProduct(Y, MatTranspose(Y)).Multiply(-2.0);
+                    for (int i = 0; i < n; ++i)
+                        Num.SetRow(i, Num.Row(i) + rowSums[i]);
+                    Num = Num.Transpose();
+                    for (int i = 0; i < n; ++i)
+                        Num.SetRow(i, Num.Row(i) + rowSums[i]);
+                    Num = Num.Add(1.0).PointwisePower(-1.0);
+                    for (int i = 0; i < n; ++i)
+                        Num[i, i] = 0.0;
+
+                    double sumNum = MatSum(Num);
+                    Q = Num.Clone();
+                    Q = Q.Divide(sumNum);
+                    Q.MapInplace(x => x < 1.0e-12 ? 1.0e-12 : x);
+
+                    var PminusQ = P - Q;
+
+                    for (int i = 0; i < n; ++i)
+                    {
+                        var tmpA = Y.Row(i);
+                        var tmpB = Matrix<double>.Build.Dense(n, 2, (r, c) => tmpA[c] - Y[r, c]);
+                        var tmpK = PminusQ.Column(i).PointwiseMultiply(Num.Column(i));
+                        var tmpF = Matrix<double>.Build.Dense(n, 2, (r, c) => tmpK[r]);
+                        var tmpG = tmpF.PointwiseMultiply(tmpB);
+                        var tmpZ = tmpG.ColumnSums();
+                        dY.SetRow(i, tmpZ);
+                    }
+                }
+                else
+                {
+                    // Barnes-Hut repulsion calculation
+                    double theta = 0.5; // accuracy parameter
+                    int maxLeaf = 1;
+                    double[,] Yarr = new double[n, 2];
+                    for (int i = 0; i < n; ++i)
+                    {
+                        Yarr[i, 0] = Y[i, 0];
+                        Yarr[i, 1] = Y[i, 1];
+                    }
+                    double minX = Y.Column(0).Minimum();
+                    double maxX = Y.Column(0).Maximum();
+                    double minY = Y.Column(1).Minimum();
+                    double maxY = Y.Column(1).Maximum();
+                    var indices = new System.Collections.Generic.List<int>();
+                    for (int i = 0; i < n; ++i) indices.Add(i);
+                    var tree = new Quadtree(Yarr, indices, minX, minY, maxX, maxY, maxLeaf);
+                    for (int i = 0; i < n; ++i)
+                    {
+                        double fx = 0.0, fy = 0.0;
+                        tree.ComputeRepulsiveForce(Y[i, 0], Y[i, 1], theta, ref fx, ref fy);
+                        dY[i, 0] = fx;
+                        dY[i, 1] = fy;
+                    }
                 }
 
                 double momentum = (iter < 20) ? initialMomentum : finalMomentum;
@@ -91,7 +121,7 @@ namespace TSNE
                 var meansTile = Matrix<double>.Build.Dense(n, 2, (i, j) => meansY[j]);
                 Y = Y - meansTile;
 
-                if ((iter + 1) % 20 == 0)
+                if (!useBarnesHut && (iter + 1) % 20 == 0 && Q != null)
                 {
                     double C = MatSum(MatMultLogDivide(P, P, Q));
                     Console.WriteLine("iter = " + (iter + 1).ToString().PadLeft(6) + "  |  error = " + C.ToString("F4"));
@@ -107,7 +137,6 @@ namespace TSNE
         }
 
         // ------------------------------------------------------
-
         // Computes conditional probabilities and entropy for a distance vector and beta
         private static double[] ComputePH(double[] di, double beta, out double h)
         {

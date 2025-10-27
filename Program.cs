@@ -1,8 +1,7 @@
-﻿// Entry point for dotnet run
-class Program
+// Entry point for dotnet run
+
+static void Main(string[] args)
 {
-    static void Main(string[] args)
-    {
-        TSNE.TSNEProgram.Main(Array.Empty<string>());
-    }
+    TSNE.TSNEProgram.Main(Array.Empty<string>());
 }
+
