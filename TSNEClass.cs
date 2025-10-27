@@ -22,10 +22,10 @@ namespace TSNE
 
             Gaussian g = new Gaussian(mean: 0.0, sd: 1.0, seed: 1);
             var Y = Matrix<double>.Build.Dense(n, 2);
-            //kept this double loop to maintain same data order as original code
+            // Initialize Y to small random values as in reference C++
             for (int i = 0; i < n; ++i)
                 for (int j = 0; j < 2; ++j)
-                    Y[i, j] = g.NextGaussian();
+                    Y[i, j] = g.NextGaussian() * 0.0001;
 
             //var tmpy = ToDoubleArray(Y); for debugging
             var dY = Matrix<double>.Build.Dense(n, 2);
@@ -94,24 +94,22 @@ namespace TSNE
 
                     // Compute Barnes-Hut repulsive force for each point and accumulate sum_Q
                     var repulsive = Matrix<double>.Build.Dense(n, 2);
-                    double total_sum_Q = 0.0;
                     double[] sum_Q_arr = new double[n];
-                    for (int i = 0; i < n; ++i)
+                    Parallel.For(0, n, i =>
                     {
                         double fx = 0.0, fy = 0.0, sum_Q = 0.0;
                         tree.ComputeRepulsiveForce(Yarr, Y[i, 0], Y[i, 1], theta, ref fx, ref fy, ref sum_Q, i);
                         repulsive[i, 0] = fx;
                         repulsive[i, 1] = fy;
                         sum_Q_arr[i] = sum_Q;
-                        total_sum_Q += sum_Q;
-                    }
-
-                    // Normalize repulsive force by total_sum_Q
-                    for (int i = 0; i < n; ++i)
-                    {
-                        repulsive[i, 0] /= total_sum_Q;
-                        repulsive[i, 1] /= total_sum_Q;
-                    }
+                        // Debug: print raw repulsive force and sum_Q for first few points
+                        if (i < 3)
+                        {
+                            Console.WriteLine($"Raw repulsive[{i}]: fx={fx}, fy={fy}, sum_Q={sum_Q}");
+                        }
+                    });
+                    double total_sum_Q = sum_Q_arr.Sum();
+                    Console.WriteLine($"total_sum_Q: {total_sum_Q}");
 
                     // Compute attractive force (P) exactly as in standard t-SNE
                     Parallel.For(0, n, i =>
@@ -126,10 +124,27 @@ namespace TSNE
                                 attractive[j, c] = pij * tmpB[j, c];
                         }
                         var attractiveSum = attractive.ColumnSums();
-                        // Combine attractive and normalized repulsive forces for gradient update
-                        dY[i, 0] = 4.0 * (attractiveSum[0] - repulsive[i, 0]);
-                        dY[i, 1] = 4.0 * (attractiveSum[1] - repulsive[i, 1]);
+                        // Debug: print attractive force for first few points
+                        if (i < 3)
+                        {
+                            Console.WriteLine($"AttractiveSum[{i}]: x={attractiveSum[0]}, y={attractiveSum[1]}");
+                        }
+                        // Combine attractive and normalized repulsive forces for gradient update (normalize repulsive here)
+                        dY[i, 0] = 4.0 * (attractiveSum[0] - (repulsive[i, 0] / total_sum_Q));
+                        dY[i, 1] = 4.0 * (attractiveSum[1] - (repulsive[i, 1] / total_sum_Q));
+                        // Debug: print gradient for first few points
+                        if (i < 3)
+                        {
+                            Console.WriteLine($"dY[{i}]: dx={dY[i, 0]}, dy={dY[i, 1]}");
+                        }
                     });
+                    // Debug: print P scaling
+                    Console.WriteLine($"P min: {P.Enumerate().Min()}, max: {P.Enumerate().Max()}, sum: {P.Enumerate().Sum()}");
+                    // Debug: print Y after update for first few points
+                    for (int i = 0; i < 3 && i < n; ++i)
+                    {
+                        Console.WriteLine($"Y[{i}] after update: x={Y[i, 0]}, y={Y[i, 1]}");
+                    }
                 }
 
                 double momentum = (iter < 20) ? initialMomentum : finalMomentum;

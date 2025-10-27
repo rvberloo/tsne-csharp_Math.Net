@@ -40,7 +40,7 @@ namespace TSNE
             //alternatively use the large MNIST test set and load2 for loading all columns without specifying them
             string ifn = "mnist_test.csv";
             var X = TSNE.MatLoad2(ifn, ',', "#");
-            int maxIter = 500;
+            int maxIter = 100;
             int perplexity = 10;
 
             Console.WriteLine("Data loaded from " + ifn);
