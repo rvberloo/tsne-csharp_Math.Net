@@ -16,7 +16,8 @@ namespace TSNE
 {
     internal class TSNEProgram
     {
-        public static void Main(string[] args)
+        // Change Main to a non-entry-point method name
+        public static void Run(string[] args)
         {
             CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
             CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
