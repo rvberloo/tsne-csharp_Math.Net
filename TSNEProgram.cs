@@ -78,22 +78,24 @@ namespace TSNE
                 var Xpca = PCA.Reduce(X, 50);
                 X = Xpca;
             }
-           
+
             Console.WriteLine("\nApplying t-SNE reduction ");
             Console.WriteLine("Setting maxIter = " + maxIter);
             Console.WriteLine("Setting perplexity = " + perplexity);
             //Step 2: Apply t-SNE to reduce to 2 or 3 dimensions
-            var reduced = TSNE.Reduce(X, maxIter, perplexity);
+            // Set this to true to enable Barnes-Hut t-SNE
+            bool useBarnesHut = false;
+            var reduced = TSNE.Reduce(X, maxIter, perplexity, useBarnesHut);
             sw.Stop();
-            
+
             Console.WriteLine("\nReduced data: ");
             TSNE.MatShow(reduced, 2, 10, 20);
 
             Console.WriteLine("\nSaving reduced data for a graph ");
             string ofn = "data_reduced.txt";
             TSNE.MatSave(reduced, ofn, ',', 2);
-            
-            
+
+
 
             Console.WriteLine("t-SNE reduction completed in " + sw.ElapsedMilliseconds / 1000.0 + " s");
             Console.WriteLine("\nEnd t-SNE demo ");

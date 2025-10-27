@@ -21,6 +21,7 @@ obj/
 *.dll
 *.pdb
 *.cache
+*.csv
 /obj/
 /bin/
 

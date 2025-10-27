@@ -12,7 +12,7 @@ namespace TSNE
 {
     public class TSNE
     {
-        public static Matrix<double> Reduce(Matrix<double> X, int maxIter, int perplexity)
+        public static Matrix<double> Reduce(Matrix<double> X, int maxIter, int perplexity, bool useBarnesHut = false)
         {
             int n = X.RowCount;
             double initialMomentum = 0.5;
@@ -105,9 +105,9 @@ namespace TSNE
 
             return Y;
         }
-        
+
         // ------------------------------------------------------
-        
+
         // Computes conditional probabilities and entropy for a distance vector and beta
         private static double[] ComputePH(double[] di, double beta, out double h)
         {
@@ -307,9 +307,9 @@ namespace TSNE
             var mat = MatLoad(fn, new int[] { usecol }, dummySep, comment);
             return mat.Column(0);
         }
-       
+
         // ------------------------------------------------------
-        
+
         public static void MatShow(Matrix<double> M, int dec, int wid, bool showIndices)
         {
             double small = 1.0 / Math.Pow(10, dec);
