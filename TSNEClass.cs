@@ -91,12 +91,33 @@ namespace TSNE
                     var indices = new System.Collections.Generic.List<int>();
                     for (int i = 0; i < n; ++i) indices.Add(i);
                     var tree = new Quadtree(Yarr, indices, minX, minY, maxX, maxY, maxLeaf);
+
+                    // Compute Barnes-Hut repulsive force for each point
+                    var repulsive = Matrix<double>.Build.Dense(n, 2);
                     for (int i = 0; i < n; ++i)
                     {
                         double fx = 0.0, fy = 0.0;
                         tree.ComputeRepulsiveForce(Y[i, 0], Y[i, 1], theta, ref fx, ref fy);
-                        dY[i, 0] = fx;
-                        dY[i, 1] = fy;
+                        repulsive[i, 0] = fx;
+                        repulsive[i, 1] = fy;
+                    }
+
+                    // Compute attractive force (P) exactly as in standard t-SNE
+                    for (int i = 0; i < n; ++i)
+                    {
+                        var tmpA = Y.Row(i);
+                        var tmpB = Matrix<double>.Build.Dense(n, 2, (r, c) => tmpA[c] - Y[r, c]);
+                        var attractive = Matrix<double>.Build.Dense(n, 2);
+                        for (int j = 0; j < n; ++j)
+                        {
+                            double pij = P[i, j];
+                            for (int c = 0; c < 2; ++c)
+                                attractive[j, c] = pij * tmpB[j, c];
+                        }
+                        var attractiveSum = attractive.ColumnSums();
+                        // Combine attractive and repulsive forces for gradient update
+                        dY[i, 0] = 4.0 * (attractiveSum[0] - repulsive[i, 0]);
+                        dY[i, 1] = 4.0 * (attractiveSum[1] - repulsive[i, 1]);
                     }
                 }
 
@@ -270,7 +291,7 @@ namespace TSNE
             var rows = new System.Collections.Generic.List<double[]>();
             using (var sr = new StreamReader(fn))
             {
-                string line;
+                string? line;
                 while ((line = sr.ReadLine()) != null)
                 {
                     if (line.StartsWith(comment)) continue;
@@ -291,7 +312,7 @@ namespace TSNE
             var rows = new System.Collections.Generic.List<double[]>();
             using (var sr = new StreamReader(fn))
             {
-                string line;
+                string? line;
                 while ((line = sr.ReadLine()) != null)
                 {
                     if (line.StartsWith(comment)) continue;
