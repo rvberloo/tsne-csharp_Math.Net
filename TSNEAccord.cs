@@ -26,7 +26,7 @@ namespace TSNE
 
             // 2. t-SNE using Accord.NET's TSNE in Accord.MachineLearning.Clustering
             
-            var tsne = new Accord.MachineLearning.Clustering.TSNE
+            var tsne = new AccordTSNE
             {
                 NumberOfOutputs = outputDims,
                 Perplexity = perplexity

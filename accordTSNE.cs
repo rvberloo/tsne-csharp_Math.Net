@@ -125,7 +125,7 @@ namespace Accord.MachineLearning.Clustering
         ///   Initializes a new instance of the <see cref="TSNE"/> class.
         /// </summary>
         /// 
-        public TSNE()
+        public AccordTSNE()
         {
             NumberOfOutputs = 2;
         }
