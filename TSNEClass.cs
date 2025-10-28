@@ -17,7 +17,7 @@ namespace TSNE
             int n = X.RowCount;
             double initialMomentum = 0.5;
             double finalMomentum = 0.8;
-            double eta = 500.0;
+            double eta = 5000.0;
             double minGain = 0.01;
 
             Gaussian g = new Gaussian(mean: 0.0, sd: 1.0, seed: 1);
@@ -88,7 +88,7 @@ namespace TSNE
                     double maxX = Y.Column(0).Maximum();
                     double minY = Y.Column(1).Minimum();
                     double maxY = Y.Column(1).Maximum();
-                    var indices = new System.Collections.Generic.List<int>();
+                    var indices = new List<int>();
                     for (int i = 0; i < n; ++i) indices.Add(i);
                     var tree = new Quadtree(Yarr, indices, minX, minY, maxX, maxY, maxLeaf);
 
@@ -138,8 +138,35 @@ namespace TSNE
                             Console.WriteLine($"dY[{i}]: dx={dY[i, 0]}, dy={dY[i, 1]}");
                         }
                     });
-                    // Debug: print P scaling
+                    // Diagnostics for P
                     Console.WriteLine($"P min: {P.Enumerate().Min()}, max: {P.Enumerate().Max()}, sum: {P.Enumerate().Sum()}");
+                    // Print histogram of P values
+                    var pVals = P.Enumerate().ToArray();
+                    int nBins = 10;
+                    double pMin = pVals.Min();
+                    double pMax = pVals.Max();
+                    double binSize = (pMax - pMin) / nBins;
+                    int[] bins = new int[nBins];
+                    foreach (var v in pVals)
+                    {
+                        int bin = (int)((v - pMin) / binSize);
+                        if (bin >= nBins) bin = nBins - 1;
+                        if (bin < 0) bin = 0;
+                        bins[bin]++;
+                    }
+                    Console.WriteLine("P histogram:");
+                    for (int i = 0; i < nBins; ++i)
+                    {
+                        double left = pMin + i * binSize;
+                        double right = left + binSize;
+                        Console.WriteLine($"[{left:E2}, {right:E2}): {bins[i]}");
+                    }
+                    // Print a few sample P values
+                    Console.WriteLine("Sample P values:");
+                    for (int i = 0; i < Math.Min(10, pVals.Length); ++i)
+                    {
+                        Console.WriteLine($"P[{i}] = {pVals[i]:E2}");
+                    }
                     // Debug: print Y after update for first few points
                     for (int i = 0; i < 3 && i < n; ++i)
                     {
@@ -164,6 +191,7 @@ namespace TSNE
                 iY = iY.Multiply(momentum).Subtract(Gains.PointwiseMultiply(dY).Multiply(eta));
                 Y = Y.Add(iY);
 
+                // Commented out zero-mean step for diagnostic
                 var meansY = Y.ColumnSums() / n;
                 var meansTile = Matrix<double>.Build.Dense(n, 2, (i, j) => meansY[j]);
                 Y = Y - meansTile;

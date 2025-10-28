@@ -41,13 +41,13 @@ namespace TSNE
             string ifn = "mnist_test.csv";
             var X = TSNE.MatLoad2(ifn, ',', "#");
             int maxIter = 100;
-            int perplexity = 10;
+            int perplexity = 30;
 
             Console.WriteLine("Data loaded from " + ifn);
 
-            //show first 10 lines of X to console
-            Console.WriteLine("First 10 rows of data:");
-            for (int i = 0; i < 10; i++)
+            //show first 3 lines of X to console
+            Console.WriteLine("First 3 rows of data:");
+            for (int i = 0; i < 3; i++)
             {
                 for (int j = 0; j < X.ColumnCount; j++)
                 {
@@ -68,6 +68,12 @@ namespace TSNE
             TSNE.MatShow(umapmatrix, 2, 10, 20);
             string ofn3 = "data_reducedUMAP.txt";
             TSNE.MatSave(umapmatrix, ofn3, ',', 2);
+
+            Console.WriteLine("\nApplying reference Barnes-Hut t-SNE reduction ");
+            var reducedRef = TSNE_BHTSNE_Reference.Reduce(X, maxIter, perplexity, 0.5);
+            TSNE.MatShow(reducedRef, 2, 10, 20);
+            string ofnRef = "data_reduced_BHTSNE_Reference.txt";
+            TSNE.MatSave(reducedRef, ofnRef, ',', 2);
 
             Stopwatch sw = new Stopwatch();
             sw.Start();
